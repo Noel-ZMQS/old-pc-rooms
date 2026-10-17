@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>井字棋</title>
+<style>
+body{font-family:宋体;}
+table{border-collapse:collapse;}
+td{width:80px;height:80px;text-align:center;vertical-align:middle;
+   font-size:40px;font-weight:bold;border:2px solid #333333;cursor:pointer;}
+button{font-size:14px;}
+</style>
+</head>
+<body>
+
+<h2>井字棋</h2>
+<p id="msg">你先走，点击格子下棋（你是 X，电脑是 O）。</p>
+
+<table id="tb"></table>
+<br>
+<button onclick="restart()">重新开始</button>
+<button onclick="location.href='index.html'">返回列表</button>
+
+<script>
+var N = 3;
+var board;
+var cells;
+var turn;
+var over;
+
+function buildTable(){
+    var tb = document.getElementById('tb');
+    tb.innerHTML = '';
+    cells = new Array();
+    for(var r=0; r<N; r++){
+        var tr = document.createElement('tr');
+        cells.push(new Array());
+        for(var c=0; c<N; c++){
+            var td = document.createElement('td');
+            td.onclick = makeClick(r, c);
+            tr.appendChild(td);
+            cells[r].push(td);
+        }
+        tb.appendChild(tr);
+    }
+}
+
+function makeClick(r, c){
+    return function(){
+        clickCell(r, c);
+    };
+}
+
+function restart(){
+    board = new Array();
+    for(var r=0; r<N; r++){
+        board.push(new Array());
+        for(var c=0; c<N; c++){
+            board[r].push('');
+        }
+    }
+    turn = 'X';
+    over = false;
+    document.getElementById('msg').innerHTML = '你先走，点击格子下棋（你是 X，电脑是 O）。';
+    draw();
+}
+
+function draw(){
+    for(var r=0; r<N; r++){
+        for(var c=0; c<N; c++){
+            cells[r][c].innerHTML = board[r][c];
+        }
+    }
+}
+
+function clickCell(r, c){
+    if(over){
+        return;
+    }
+    if(board[r][c] !== ''){
+        return;
+    }
+    board[r][c] = 'X';
+    draw();
+    if(checkWin('X')){
+        over = true;
+        document.getElementById('msg').innerHTML = '你赢了！';
+        return;
+    }
+    if(isFull()){
+        over = true;
+        document.getElementById('msg').innerHTML = '平局。';
+        return;
+    }
+    aiMove();
+    draw();
+    if(checkWin('O')){
+        over = true;
+        document.getElementById('msg').innerHTML = '电脑赢了，再来一局吧。';
+        return;
+    }
+    if(isFull()){
+        over = true;
+        document.getElementById('msg').innerHTML = '平局。';
+    }
+}
+
+function isFull(){
+    for(var r=0; r<N; r++){
+        for(var c=0; c<N; c++){
+            if(board[r][c] === ''){
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+function checkWin(p){
+    var i, j;
+    for(i=0; i<N; i++){
+        var row = true;
+        var col = true;
+        for(j=0; j<N; j++){
+            if(board[i][j] !== p){ row = false; }
+            if(board[j][i] !== p){ col = false; }
+        }
+        if(row || col){
+            return true;
+        }
+    }
+    var d1 = true;
+    var d2 = true;
+    for(i=0; i<N; i++){
+        if(board[i][i] !== p){ d1 = false; }
+        if(board[i][N-1-i] !== p){ d2 = false; }
+    }
+    if(d1 || d2){
+        return true;
+    }
+    return false;
+}
+
+function emptyCells(){
+    var res = new Array();
+    for(var r=0; r<N; r++){
+        for(var c=0; c<N; c++){
+            if(board[r][c] === ''){
+                res.push({r:r, c:c});
+            }
+        }
+    }
+    return res;
+}
+
+function aiMove(){
+    var list = emptyCells();
+    if(list.length === 0){
+        return;
+    }
+    var i;
+    for(i=0; i<list.length; i++){
+        board[list[i].r][list[i].c] = 'O';
+        if(checkWin('O')){
+            return;
+        }
+        board[list[i].r][list[i].c] = '';
+    }
+    for(i=0; i<list.length; i++){
+        board[list[i].r][list[i].c] = 'X';
+        if(checkWin('X')){
+            board[list[i].r][list[i].c] = 'O';
+            return;
+        }
+        board[list[i].r][list[i].c] = '';
+    }
+    if(board[1][1] === ''){
+        board[1][1] = 'O';
+        return;
+    }
+    var p = list[Math.floor(Math.random()*list.length)];
+    board[p.r][p.c] = 'O';
+}
+
+buildTable();
+restart();
+</script>
+
+</body>
+</html>

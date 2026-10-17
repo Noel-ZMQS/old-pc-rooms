@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>四子棋</title>
+<style>
+body{font-family:宋体;}
+canvas{border:1px solid #000000;}
+button{font-size:14px;}
+</style>
+</head>
+<body>
+
+<h2>四子棋</h2>
+<p id="msg">你是红棋，先走。点击最上面一行选择要投放的列，棋子会落到底。横、竖、斜任意方向连成 4 个就赢。</p>
+
+<canvas id="cv" width="420" height="400"></canvas>
+<br><br>
+<button onclick="restart()">重新开始</button>
+<button onclick="location.href='index.html'">返回列表</button>
+
+<script>
+var cv = document.getElementById('cv');
+var ctx = cv.getContext('2d');
+var COLS = 7, ROWS = 6;
+var GS = 60;
+var TOP = 40;
+
+var EMPTY = 0, RED = 1, YELLOW = 2;
+var board;
+var over;
+var thinking;
+var hoverCol;
+var winCells;
+
+function restart(){
+    board = new Array();
+    var r, c;
+    for(r=0; r<ROWS; r++){
+        board.push(new Array());
+        for(c=0; c<COLS; c++){
+            board[r].push(EMPTY);
+        }
+    }
+    over = false;
+    thinking = false;
+    hoverCol = -1;
+    winCells = null;
+    document.getElementById('msg').innerHTML = '你是红棋，先走。点击顶部选择列。';
+    draw();
+}
+
+function draw(){
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    // 画蓝色板子，挖出圆孔
+    ctx.fillStyle = '#2255cc';
+    ctx.fillRect(0, TOP, cv.width, ROWS*GS);
+    var r, c;
+    for(r=0; r<ROWS; r++){
+        for(c=0; c<COLS; c++){
+            ctx.beginPath();
+            ctx.arc(c*GS + GS/2, TOP + r*GS + GS/2, GS/2 - 5, 0, Math.PI*2);
+            if(board[r][c] === EMPTY){
+                ctx.fillStyle = '#ffffff';
+            }else if(board[r][c] === RED){
+                ctx.fillStyle = '#dd2222';
+            }else{
+                ctx.fillStyle = '#ffcc22';
+            }
+            ctx.fill();
+        }
+    }
+    // 顶部提示箭头
+    if(!over && !thinking && hoverCol >= 0){
+        ctx.fillStyle = '#dd2222';
+        ctx.beginPath();
+        ctx.moveTo(hoverCol*GS + GS/2 - 12, 8);
+        ctx.lineTo(hoverCol*GS + GS/2 + 12, 8);
+        ctx.lineTo(hoverCol*GS + GS/2, TOP - 6);
+        ctx.fill();
+    }
+    if(winCells){
+        ctx.strokeStyle = '#00aa00';
+        ctx.lineWidth = 3;
+        for(var i=0; i<winCells.length; i++){
+            ctx.beginPath();
+            ctx.arc(winCells[i].c*GS + GS/2, TOP + winCells[i].r*GS + GS/2, GS/2 - 5, 0, Math.PI*2);
+            ctx.stroke();
+        }
+        ctx.lineWidth = 1;
+    }
+}
+
+// 返回棋子会落到哪一行，列满返回 -1
+function dropRow(c){
+    var r;
+    for(r=ROWS-1; r>=0; r--){
+        if(board[r][c] === EMPTY){
+            return r;
+        }
+    }
+    return -1;
+}
+
+function canDrop(c){
+    return dropRow(c) >= 0;
+}
+
+// 检查以 (r,c) 为起点是否连成四个，返回连子格子
+function checkWin(r, c, who){
+    var dirs = [[0,1],[1,0],[1,1],[1,-1]];
+    var d, dr, dc, cells, i;
+    for(d=0; d<dirs.length; d++){
+        dr = dirs[d][0];
+        dc = dirs[d][1];
+        cells = new Array();
+        cells.push({r:r, c:c});
+        for(i=1; i<COLS; i++){
+            if(r + i*dr < 0 || r + i*dr >= ROWS || c + i*dc < 0 || c + i*dc >= COLS){
+                break;
+            }
+            if(board[r + i*dr][c + i*dc] !== who){
+                break;
+            }
+            cells.push({r:r + i*dr, c:c + i*dc});
+        }
+        for(i=1; i<COLS; i++){
+            if(r - i*dr < 0 || r - i*dr >= ROWS || c - i*dc < 0 || c - i*dc >= COLS){
+                break;
+            }
+            if(board[r - i*dr][c - i*dc] !== who){
+                break;
+            }
+            cells.push({r:r - i*dr, c:c - i*dc});
+        }
+        if(cells.length >= 4){
+            return cells;
+        }
+    }
+    return null;
+}
+
+function endGame(text, cells){
+    over = true;
+    winCells = cells;
+    document.getElementById('msg').innerHTML = text;
+    draw();
+}
+
+function tryDrop(c, who){
+    var r = dropRow(c);
+    if(r < 0){
+        return null;
+    }
+    board[r][c] = who;
+    var cells = checkWin(r, c, who);
+    return {r:r, c:c, cells:cells};
+}
+
+function undo(c){
+    for(var r=0; r<ROWS; r++){
+        if(board[r][c] !== EMPTY){
+            board[r][c] = EMPTY;
+            return;
+        }
+    }
+}
+
+cv.onmousemove = function(e){
+    e = e || window.event;
+    var x;
+    if(e.offsetX !== undefined){
+        x = e.offsetX;
+    }else{
+        x = e.clientX - cv.getBoundingClientRect().left;
+    }
+    hoverCol = Math.floor(x/GS);
+    if(!over && !thinking){
+        draw();
+    }
+};
+
+cv.onclick = function(e){
+    e = e || window.event;
+    var x;
+    if(e.offsetX !== undefined){
+        x = e.offsetX;
+    }else{
+        x = e.clientX - cv.getBoundingClientRect().left;
+    }
+    var c = Math.floor(x/GS);
+    clickCol(c);
+};
+
+function clickCol(c){
+    if(over || thinking){
+        return;
+    }
+    if(c < 0 || c >= COLS || !canDrop(c)){
+        return;
+    }
+    var res = tryDrop(c, RED);
+    draw();
+    if(res.cells){
+        endGame('红棋连成四个，你赢了！', res.cells);
+        return;
+    }
+    thinking = true;
+    document.getElementById('msg').innerHTML = '电脑思考中...';
+    draw();
+    setTimeout(aiMove, 200);
+}
+
+function aiMove(){
+    var c, r, res;
+    var order = [3,2,4,1,5,0,6];
+    var i;
+    // 1. 自己能赢就赢
+    for(i=0; i<order.length; i++){
+        c = order[i];
+        if(!canDrop(c)){
+            continue;
+        }
+        res = tryDrop(c, YELLOW);
+        if(res.cells){
+            undo(c);
+            tryDrop(c, YELLOW);
+            endGame('黄棋连成四个，电脑赢了。', checkWin(res.r, res.c, YELLOW));
+            thinking = false;
+            return;
+        }
+        undo(c);
+    }
+    // 2. 对手要赢就堵
+    for(i=0; i<order.length; i++){
+        c = order[i];
+        if(!canDrop(c)){
+            continue;
+        }
+        res = tryDrop(c, RED);
+        if(res.cells){
+            undo(c);
+            tryDrop(c, YELLOW);
+            thinking = false;
+            document.getElementById('msg').innerHTML = '轮到你了（红棋）。';
+            draw();
+            return;
+        }
+        undo(c);
+    }
+    // 3. 否则走中间，或者随机
+    for(i=0; i<order.length; i++){
+        c = order[i];
+        if(canDrop(c)){
+            r = dropRow(c);
+            // 不要走出让对手立刻赢的一步
+            board[r][c] = YELLOW;
+            var bad = false;
+            var k;
+            for(k=0; k<COLS; k++){
+                if(!canDrop(k)){
+                    continue;
+                }
+                var t = tryDrop(k, RED);
+                if(t.cells){
+                    bad = true;
+                }
+                undo(k);
+            }
+            if(!bad){
+                thinking = false;
+                document.getElementById('msg').innerHTML = '轮到你了（红棋）。';
+                draw();
+                return;
+            }
+            board[r][c] = EMPTY;
+        }
+    }
+    // 兜底：随便下一个
+    for(i=0; i<COLS; i++){
+        if(canDrop(i)){
+            tryDrop(i, YELLOW);
+            break;
+        }
+    }
+    thinking = false;
+    document.getElementById('msg').innerHTML = '轮到你了（红棋）。';
+    draw();
+}
+
+restart();
+</script>
+
+</body>
+</html>

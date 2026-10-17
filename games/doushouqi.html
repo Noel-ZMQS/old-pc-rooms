@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>斗兽棋</title>
+<style>
+body{font-family:宋体;}
+canvas{border:1px solid #000000;}
+button{font-size:14px;}
+</style>
+</head>
+<body>
+
+<h2>斗兽棋</h2>
+<p id="msg">你是红方（下方），先走。先点自己的棋子选中，再点目标格移动。</p>
+<p>大小顺序：象 &gt; 狮 &gt; 虎 &gt; 豹 &gt; 狼 &gt; 狗 &gt; 猫 &gt; 鼠。鼠能吃象，象不能吃鼠。只有鼠能下水，狮虎可以跳过河。走进对方兽穴就赢。</p>
+
+<canvas id="cv" width="420" height="540"></canvas>
+<br><br>
+<button onclick="restart()">重新开始</button>
+<button onclick="location.href='index.html'">返回列表</button>
+
+<script>
+var cv = document.getElementById('cv');
+var ctx = cv.getContext('2d');
+var ROWS = 9, COLS = 7;
+var GS = 60;
+
+var RED = 1, BLACK = 2;
+var board;
+var sel;
+var over;
+var thinking;
+
+var NAMES = ['', '鼠', '猫', '狗', '狼', '豹', '虎', '狮', '象'];
+var RANK = {'鼠':1, '猫':2, '狗':3, '狼':4, '豹':5, '虎':6, '狮':7, '象':8};
+
+function mk(side, name){
+    return {side:side, name:name, rank:RANK[name]};
+}
+
+function restart(){
+    board = new Array();
+    var r, c;
+    for(r=0; r<ROWS; r++){
+        board.push(new Array());
+        for(c=0; c<COLS; c++){
+            board[r].push(null);
+        }
+    }
+    // 黑方（电脑）在上
+    board[0][0] = mk(BLACK, '狮');
+    board[0][6] = mk(BLACK, '虎');
+    board[1][1] = mk(BLACK, '狗');
+    board[1][5] = mk(BLACK, '猫');
+    board[2][0] = mk(BLACK, '鼠');
+    board[2][2] = mk(BLACK, '豹');
+    board[2][4] = mk(BLACK, '狼');
+    board[2][6] = mk(BLACK, '象');
+    // 红方（玩家）在下
+    board[8][6] = mk(RED, '狮');
+    board[8][0] = mk(RED, '虎');
+    board[7][5] = mk(RED, '狗');
+    board[7][1] = mk(RED, '猫');
+    board[6][6] = mk(RED, '鼠');
+    board[6][4] = mk(RED, '豹');
+    board[6][2] = mk(RED, '狼');
+    board[6][0] = mk(RED, '象');
+
+    sel = null;
+    over = false;
+    thinking = false;
+    document.getElementById('msg').innerHTML = '你是红方（下方），先走。先点自己的棋子选中，再点目标格。';
+    draw();
+}
+
+function inBoard(r, c){
+    return r>=0 && r<ROWS && c>=0 && c<COLS;
+}
+
+function isRiver(r, c){
+    return (r>=3 && r<=5) && (c===1 || c===2 || c===4 || c===5);
+}
+
+function isDen(r, c, side){
+    // side 一方的兽穴：红方在下 (8,3)，黑方在上 (0,3)
+    if(side === RED){
+        return (r===8 && c===3);
+    }
+    return (r===0 && c===3);
+}
+
+function isTrap(r, c, side){
+    // side 的陷阱（会削弱进入该格的敌方棋子）
+    if(side === RED){
+        return (r===8 && c===2) || (r===8 && c===4) || (r===7 && c===3);
+    }
+    return (r===0 && c===2) || (r===0 && c===4) || (r===1 && c===3);
+}
+
+function pieceAt(r, c){
+    return board[r][c];
+}
+
+// 检查 from -> to 是否合法
+function canMove(fr, fc, tr, tc){
+    if(!inBoard(tr, tc)){
+        return false;
+    }
+    var p = board[fr][fc];
+    if(!p){
+        return false;
+    }
+    if(fr === tr && fc === tc){
+        return false;
+    }
+    var target = board[tr][tc];
+    if(target && target.side === p.side){
+        return false;
+    }
+    // 不能进自己的兽穴
+    if(isDen(tr, tc, p.side)){
+        return false;
+    }
+    var dr = tr - fr;
+    var dc = tc - fc;
+
+    if(isRiver(tr, tc) && p.rank !== 1){
+        return false;
+    }
+
+    // 狮虎跳河（河宽 2 格，横跳跨 3 列；河长 3 格，竖跳跨 4 行）
+    if(p.rank === 7 || p.rank === 6){
+        if(dr === 0 && Math.abs(dc) === 3){
+            var c1 = fc + dc/3;
+            var c2 = fc + dc*2/3;
+            if(isRiver(fr, c1) && isRiver(fr, c2) && !isRiver(tr, tc)){
+                var m1 = board[fr][c1];
+                var m2 = board[fr][c2];
+                if((m1 && m1.rank === 1) || (m2 && m2.rank === 1)){
+                    return false; // 河里有老鼠，跳不过去
+                }
+                return canEat(p, fr, fc, tr, tc);
+            }
+        }
+        if(dc === 0 && Math.abs(dr) === 4){
+            if(isRiver(3, fc) && isRiver(4, fc) && isRiver(5, fc) && !isRiver(tr, tc)){
+                var k, m2;
+                for(k=3; k<=5; k++){
+                    m2 = board[k][fc];
+                    if(m2 && m2.rank === 1){
+                        return false;
+                    }
+                }
+                return canEat(p, fr, fc, tr, tc);
+            }
+        }
+    }
+
+    // 普通走一格
+    if(Math.abs(dr) + Math.abs(dc) === 1){
+        return canEat(p, fr, fc, tr, tc);
+    }
+    return false;
+}
+
+function canEat(p, fr, fc, tr, tc){
+    var target = board[tr][tc];
+    if(!target){
+        return true;
+    }
+    // 目标在水里：只有同样在水里的鼠才能吃
+    if(isRiver(tr, tc)){
+        if(p.rank === 1 && isRiver(fr, fc)){
+            return true;
+        }
+        return false;
+    }
+    // 己方在水里，不能吃岸上的棋子
+    if(isRiver(fr, fc)){
+        return false;
+    }
+    // 己方踩在对方陷阱里，等级降到 0，可以被任意敌子吃（这里己方是攻击方，不受影响）
+    // 对方踩在己方陷阱里，等级降为 0
+    var enemyRank = target.rank;
+    if(isTrap(tr, tc, p.side)){
+        enemyRank = 0;
+    }
+    if(p.rank === 8 && enemyRank === 1){
+        return false; // 象不能吃鼠
+    }
+    if(p.rank === 1 && enemyRank === 8){
+        return true; // 鼠可以吃象
+    }
+    return p.rank >= enemyRank;
+}
+
+function doMove(fr, fc, tr, tc){
+    var p = board[fr][fc];
+    board[fr][fc] = null;
+    board[tr][tc] = p;
+}
+
+function countSide(side){
+    var n = 0;
+    for(var r=0; r<ROWS; r++){
+        for(var c=0; c<COLS; c++){
+            if(board[r][c] && board[r][c].side === side){
+                n = n + 1;
+            }
+        }
+    }
+    return n;
+}
+
+function checkEnd(){
+    var red = countSide(RED);
+    var black = countSide(BLACK);
+    var denRed = board[0][3];   // 黑方兽穴被红棋进入
+    var denBlack = board[8][3]; // 红方兽穴被黑棋进入
+    if(denRed && denRed.side === RED){
+        endGame('红棋走进黑方兽穴，你赢了！');
+        return true;
+    }
+    if(denBlack && denBlack.side === BLACK){
+        endGame('黑棋走进红方兽穴，电脑赢了。');
+        return true;
+    }
+    if(black === 0){
+        endGame('黑方棋子被吃光，你赢了！');
+        return true;
+    }
+    if(red === 0){
+        endGame('红方棋子被吃光，电脑赢了。');
+        return true;
+    }
+    return false;
+}
+
+function endGame(text){
+    over = true;
+    sel = null;
+    document.getElementById('msg').innerHTML = text;
+    draw();
+}
+
+function draw(){
+    var r, c, p;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, cv.width, cv.height);
+
+    // 陆地与河
+    for(r=0; r<ROWS; r++){
+        for(c=0; c<COLS; c++){
+            if(isRiver(r, c)){
+                ctx.fillStyle = '#88bbee';
+            }else{
+                ctx.fillStyle = '#e8d6a8';
+            }
+            ctx.fillRect(c*GS, r*GS, GS, GS);
+        }
+    }
+    // 兽穴
+    ctx.fillStyle = '#cccccc';
+    ctx.fillRect(3*GS, 0, GS, GS);
+    ctx.fillRect(3*GS, 8*GS, GS, GS);
+    ctx.fillStyle = '#333333';
+    ctx.font = '16px 宋体';
+    ctx.fillText('黑穴', 3*GS + 12, 35);
+    ctx.fillText('红穴', 3*GS + 12, 8*GS + 35);
+
+    // 陷阱标记
+    ctx.strokeStyle = '#996633';
+    ctx.lineWidth = 2;
+    markTrap(8, 2); markTrap(8, 4); markTrap(7, 3);
+    markTrap(0, 2); markTrap(0, 4); markTrap(1, 3);
+    ctx.lineWidth = 1;
+
+    // 网格
+    ctx.strokeStyle = '#666666';
+    for(r=0; r<=ROWS; r++){
+        ctx.beginPath();
+        ctx.moveTo(0, r*GS);
+        ctx.lineTo(cv.width, r*GS);
+        ctx.stroke();
+    }
+    for(c=0; c<=COLS; c++){
+        ctx.beginPath();
+        ctx.moveTo(c*GS, 0);
+        ctx.lineTo(c*GS, cv.height);
+        ctx.stroke();
+    }
+
+    // 选中高亮
+    if(sel){
+        ctx.fillStyle = '#ffff00';
+        ctx.fillRect(sel.c*GS, sel.r*GS, GS, GS);
+    }
+
+    // 棋子
+    for(r=0; r<ROWS; r++){
+        for(c=0; c<COLS; c++){
+            p = board[r][c];
+            if(!p){
+                continue;
+            }
+            ctx.beginPath();
+            ctx.arc(c*GS + GS/2, r*GS + GS/2, 22, 0, Math.PI*2);
+            if(p.side === RED){
+                ctx.fillStyle = '#ee5533';
+            }else{
+                ctx.fillStyle = '#333333';
+            }
+            ctx.fill();
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.lineWidth = 1;
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 22px 宋体';
+            ctx.fillText(p.name, c*GS + GS/2 - 11, r*GS + GS/2 + 8);
+        }
+    }
+}
+
+function markTrap(r, c){
+    var x = c*GS, y = r*GS;
+    ctx.beginPath();
+    ctx.moveTo(x+8, y+8);
+    ctx.lineTo(x+GS-8, y+GS-8);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x+GS-8, y+8);
+    ctx.lineTo(x+8, y+GS-8);
+    ctx.stroke();
+}
+
+cv.onclick = function(e){
+    e = e || window.event;
+    var x, y;
+    if(e.offsetX !== undefined){
+        x = e.offsetX;
+        y = e.offsetY;
+    }else{
+        var rect = cv.getBoundingClientRect();
+        x = e.clientX - rect.left;
+        y = e.clientY - rect.top;
+    }
+    var c = Math.floor(x/GS);
+    var r = Math.floor(y/GS);
+    clickAt(r, c);
+};
+
+function clickAt(r, c){
+    if(over || thinking){
+        return;
+    }
+    if(!inBoard(r, c)){
+        return;
+    }
+    var p = board[r][c];
+    if(sel && canMove(sel.r, sel.c, r, c)){
+        doMove(sel.r, sel.c, r, c);
+        sel = null;
+        draw();
+        if(checkEnd()){
+            return;
+        }
+        thinking = true;
+        document.getElementById('msg').innerHTML = '电脑思考中...';
+        setTimeout(aiMove, 150);
+        return;
+    }
+    if(p && p.side === RED){
+        sel = {r:r, c:c};
+        draw();
+    }
+}
+
+function distToDen(r, c, side){
+    // 到对方兽穴的距离
+    var dr, dc;
+    if(side === RED){
+        dr = r - 0;
+        dc = c - 3;
+    }else{
+        dr = r - 8;
+        dc = c - 3;
+    }
+    return Math.abs(dr) + Math.abs(dc);
+}
+
+function aiMove(){
+    var best = -99999;
+    var bestMoves = new Array();
+    var r, c, p, tr, tc, score;
+    var dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+    var d, nr, nc;
+    var jump = [[0,-3],[0,3],[-4,0],[4,0]];
+
+    for(r=0; r<ROWS; r++){
+        for(c=0; c<COLS; c++){
+            p = board[r][c];
+            if(!p || p.side !== BLACK){
+                continue;
+            }
+            var targets = new Array();
+            for(d=0; d<dirs.length; d++){
+                targets.push([r + dirs[d][0], c + dirs[d][1]]);
+            }
+            if(p.rank === 7 || p.rank === 6){
+                for(d=0; d<jump.length; d++){
+                    targets.push([r + jump[d][0], c + jump[d][1]]);
+                }
+            }
+            for(var i=0; i<targets.length; i++){
+                tr = targets[i][0];
+                tc = targets[i][1];
+                if(!canMove(r, c, tr, tc)){
+                    continue;
+                }
+                score = 0;
+                var victim = board[tr][tc];
+                if(victim){
+                    score = score + victim.rank * 10;
+                }
+                if(tr === 8 && tc === 3){
+                    score = score + 10000;
+                }
+                score = score + (20 - distToDen(tr, tc, BLACK));
+                // 别走到会被红棋吃掉的格子
+                if(willBeEaten(tr, tc, BLACK)){
+                    score = score - p.rank * 8;
+                }
+                score = score + Math.random() * 3;
+                if(score > best){
+                    best = score;
+                    bestMoves = new Array();
+                    bestMoves.push({fr:r, fc:c, tr:tr, tc:tc});
+                }else if(score === best){
+                    bestMoves.push({fr:r, fc:c, tr:tr, tc:tc});
+                }
+            }
+        }
+    }
+
+    if(bestMoves.length > 0){
+        var m = bestMoves[Math.floor(Math.random() * bestMoves.length)];
+        doMove(m.fr, m.fc, m.tr, m.tc);
+    }
+    thinking = false;
+    draw();
+    if(!checkEnd()){
+        document.getElementById('msg').innerHTML = '轮到你了（红方）。';
+    }
+}
+
+function willBeEaten(tr, tc, side){
+    var r, c, p;
+    for(r=0; r<ROWS; r++){
+        for(c=0; c<COLS; c++){
+            p = board[r][c];
+            if(!p || p.side === side){
+                continue;
+            }
+            if(canMove(r, c, tr, tc)){
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+restart();
+</script>
+
+</body>
+</html>

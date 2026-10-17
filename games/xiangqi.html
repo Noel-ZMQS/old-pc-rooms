@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>中国象棋</title>
+<style>
+body{font-family:宋体;}
+canvas{border:1px solid #000000;}
+button{font-size:14px;}
+</style>
+</head>
+<body>
+
+<h2>中国象棋</h2>
+<p id="msg">你是红方（下方），先走。先点自己的棋子选中，再点目标格。吃掉对方的"将"就赢。</p>
+
+<canvas id="cv" width="460" height="510"></canvas>
+<br><br>
+<button onclick="restart()">重新开始</button>
+<button onclick="location.href='index.html'">返回列表</button>
+
+<script>
+var cv = document.getElementById('cv');
+var ctx = cv.getContext('2d');
+var ROWS = 10, COLS = 9;
+var GS = 50, PAD = 30;
+
+var RED = 'r', BLACK = 'b';
+var board;
+var sel;
+var over;
+var thinking;
+
+var NAME_RED = {'K':'帅','A':'仕','B':'相','N':'马','R':'车','C':'炮','P':'兵'};
+var NAME_BLACK = {'K':'将','A':'士','B':'象','N':'马','R':'车','C':'炮','P':'卒'};
+var VALUE = {'K':1000,'R':9,'N':4,'C':5,'A':2,'B':2,'P':1};
+
+function mk(side, type){
+    return {side:side, type:type};
+}
+
+function restart(){
+    board = new Array();
+    var r, c;
+    for(r=0; r<ROWS; r++){
+        board.push(new Array());
+        for(c=0; c<COLS; c++){
+            board[r].push(null);
+        }
+    }
+    var i;
+    var init = [
+        [0,0,'b','R'],[0,1,'b','N'],[0,2,'b','B'],[0,3,'b','A'],[0,4,'b','K'],
+        [0,5,'b','A'],[0,6,'b','B'],[0,7,'b','N'],[0,8,'b','R'],
+        [2,1,'b','C'],[2,7,'b','C'],
+        [3,0,'b','P'],[3,2,'b','P'],[3,4,'b','P'],[3,6,'b','P'],[3,8,'b','P'],
+        [9,0,'r','R'],[9,1,'r','N'],[9,2,'r','B'],[9,3,'r','A'],[9,4,'r','K'],
+        [9,5,'r','A'],[9,6,'r','B'],[9,7,'r','N'],[9,8,'r','R'],
+        [7,1,'r','C'],[7,7,'r','C'],
+        [6,0,'r','P'],[6,2,'r','P'],[6,4,'r','P'],[6,6,'r','P'],[6,8,'r','P']
+    ];
+    for(i=0; i<init.length; i++){
+        board[init[i][0]][init[i][1]] = mk(init[i][2], init[i][3]);
+    }
+    sel = null;
+    over = false;
+    thinking = false;
+    document.getElementById('msg').innerHTML = '你是红方（下方），先走。先点自己的棋子选中，再点目标格。';
+    draw();
+}
+
+function px(c){ return PAD + c*GS; }
+function py(r){ return PAD + r*GS; }
+
+function inBoard(r, c){
+    return r>=0 && r<ROWS && c>=0 && c<COLS;
+}
+
+function inPalace(r, c, side){
+    if(c < 3 || c > 5){
+        return false;
+    }
+    if(side === RED){
+        return r >= 7 && r <= 9;
+    }
+    return r >= 0 && r <= 2;
+}
+
+function findKing(side){
+    var r, c, p;
+    for(r=0; r<ROWS; r++){
+        for(c=0; c<COLS; c++){
+            p = board[r][c];
+            if(p && p.side === side && p.type === 'K'){
+                return {r:r, c:c};
+            }
+        }
+    }
+    return null;
+}
+
+// 两将是否照面（同列且中间无子）
+function kingsFace(){
+    var rk = findKing(RED);
+    var bk = findKing(BLACK);
+    if(!rk || !bk){
+        return false;
+    }
+    if(rk.c !== bk.c){
+        return false;
+    }
+    var min = Math.min(rk.r, bk.r);
+    var max = Math.max(rk.r, bk.r);
+    var r;
+    for(r = min + 1; r < max; r++){
+        if(board[r][rk.c]){
+            return false;
+        }
+    }
+    return true;
+}
+
+function countBetween(r1, c1, r2, c2){
+    var n = 0;
+    var r, c;
+    if(r1 === r2){
+        var cmin = Math.min(c1, c2);
+        var cmax = Math.max(c1, c2);
+        for(c = cmin + 1; c < cmax; c++){
+            if(board[r1][c]){
+                n = n + 1;
+            }
+        }
+    }else{
+        var rmin = Math.min(r1, r2);
+        var rmax = Math.max(r1, r2);
+        for(r = rmin + 1; r < rmax; r++){
+            if(board[r][c1]){
+                n = n + 1;
+            }
+        }
+    }
+    return n;
+}
+
+function canMove(fr, fc, tr, tc){
+    var p = board[fr][fc];
+    if(!p || !inBoard(tr, tc) || (fr === tr && fc === tc)){
+        return false;
+    }
+    var target = board[tr][tc];
+    if(target && target.side === p.side){
+        return false;
+    }
+    var dr = tr - fr;
+    var dc = tc - fc;
+    var ok = false;
+    var side = p.side;
+
+    if(p.type === 'R'){
+        if(fr === tr || fc === tc){
+            ok = (countBetween(fr, fc, tr, tc) === 0);
+        }
+    }else if(p.type === 'N'){
+        if((Math.abs(dr) === 2 && Math.abs(dc) === 1) || (Math.abs(dr) === 1 && Math.abs(dc) === 2)){
+            // 马腿
+            var lr, lc;
+            if(Math.abs(dr) === 2){
+                lr = fr + dr/2;
+                lc = fc;
+            }else{
+                lr = fr;
+                lc = fc + dc/2;
+            }
+            ok = !board[lr][lc];
+        }
+    }else if(p.type === 'B'){
+        if(Math.abs(dr) === 2 && Math.abs(dc) === 2){
+            if(!board[fr + dr/2][fc + dc/2]){
+                if(side === RED){
+                    ok = (tr >= 5);
+                }else{
+                    ok = (tr <= 4);
+                }
+            }
+        }
+    }else if(p.type === 'A'){
+        if(Math.abs(dr) === 1 && Math.abs(dc) === 1){
+            ok = inPalace(tr, tc, side);
+        }
+    }else if(p.type === 'K'){
+        if(Math.abs(dr) + Math.abs(dc) === 1){
+            ok = inPalace(tr, tc, side);
+        }
+    }else if(p.type === 'C'){
+        if(fr === tr || fc === tc){
+            var n = countBetween(fr, fc, tr, tc);
+            if(target){
+                ok = (n === 1);
+            }else{
+                ok = (n === 0);
+            }
+        }
+    }else if(p.type === 'P'){
+        if(side === RED){
+            if(dc === 0 && dr === -1){
+                ok = true;
+            }else if(dr === 0 && Math.abs(dc) === 1 && fr <= 4){
+                ok = true;
+            }
+        }else{
+            if(dc === 0 && dr === 1){
+                ok = true;
+            }else if(dr === 0 && Math.abs(dc) === 1 && fr >= 5){
+                ok = true;
+            }
+        }
+    }
+
+    if(!ok){
+        return false;
+    }
+    // 走完不能造成两将照面
+    var saved = board[tr][tc];
+    board[tr][tc] = p;
+    board[fr][fc] = null;
+    var face = kingsFace();
+    board[fr][fc] = p;
+    board[tr][tc] = saved;
+    if(face){
+        return false;
+    }
+    return true;
+}
+
+function doMove(fr, fc, tr, tc){
+    board[tr][tc] = board[fr][fc];
+    board[fr][fc] = null;
+}
+
+function draw(){
+    var r, c, i;
+    ctx.fillStyle = '#f5dda0';
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1;
+
+    for(r=0; r<ROWS; r++){
+        ctx.beginPath();
+        ctx.moveTo(px(0), py(r));
+        ctx.lineTo(px(COLS-1), py(r));
+        ctx.stroke();
+    }
+    for(c=0; c<COLS; c++){
+        if(c === 0 || c === COLS-1){
+            ctx.beginPath();
+            ctx.moveTo(px(c), py(0));
+            ctx.lineTo(px(c), py(ROWS-1));
+            ctx.stroke();
+        }else{
+            ctx.beginPath();
+            ctx.moveTo(px(c), py(0));
+            ctx.lineTo(px(c), py(4));
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(px(c), py(5));
+            ctx.lineTo(px(c), py(ROWS-1));
+            ctx.stroke();
+        }
+    }
+    // 九宫斜线
+    ctx.beginPath();
+    ctx.moveTo(px(3), py(0)); ctx.lineTo(px(5), py(2)); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(px(5), py(0)); ctx.lineTo(px(3), py(2)); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(px(3), py(7)); ctx.lineTo(px(5), py(9)); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(px(5), py(7)); ctx.lineTo(px(3), py(9)); ctx.stroke();
+
+    // 楚河汉界
+    ctx.fillStyle = '#000000';
+    ctx.font = '20px 宋体';
+    ctx.fillText('楚', px(1), py(4) + GS - 12);
+    ctx.fillText('河', px(2), py(4) + GS - 12);
+    ctx.fillText('汉', px(6), py(4) + GS - 12);
+    ctx.fillText('界', px(7), py(4) + GS - 12);
+
+    // 选中框
+    if(sel){
+        ctx.strokeStyle = '#00aa00';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(px(sel.c) - 22, py(sel.r) - 22, 44, 44);
+        ctx.lineWidth = 1;
+    }
+
+    // 棋子
+    for(r=0; r<ROWS; r++){
+        for(c=0; c<COLS; c++){
+            var p = board[r][c];
+            if(!p){
+                continue;
+            }
+            ctx.beginPath();
+            ctx.arc(px(c), py(r), 21, 0, Math.PI*2);
+            ctx.fillStyle = '#f0e0b0';
+            ctx.fill();
+            ctx.strokeStyle = (p.side === RED) ? '#cc0000' : '#000000';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(px(c), py(r), 17, 0, Math.PI*2);
+            ctx.stroke();
+            ctx.fillStyle = (p.side === RED) ? '#cc0000' : '#000000';
+            ctx.font = 'bold 22px 宋体';
+            var nm = (p.side === RED) ? NAME_RED[p.type] : NAME_BLACK[p.type];
+            ctx.fillText(nm, px(c) - 11, py(r) + 8);
+            ctx.lineWidth = 1;
+        }
+    }
+}
+
+cv.onclick = function(e){
+    e = e || window.event;
+    var x, y;
+    if(e.offsetX !== undefined){
+        x = e.offsetX;
+        y = e.offsetY;
+    }else{
+        var rect = cv.getBoundingClientRect();
+        x = e.clientX - rect.left;
+        y = e.clientY - rect.top;
+    }
+    var c = Math.round((x - PAD)/GS);
+    var r = Math.round((y - PAD)/GS);
+    clickAt(r, c);
+};
+
+function clickAt(r, c){
+    if(over || thinking){
+        return;
+    }
+    if(!inBoard(r, c)){
+        return;
+    }
+    var p = board[r][c];
+    if(sel && canMove(sel.r, sel.c, r, c)){
+        var eaten = board[r][c];
+        doMove(sel.r, sel.c, r, c);
+        sel = null;
+        draw();
+        if(eaten && eaten.type === 'K'){
+            endGame('红方吃掉黑将，你赢了！');
+            return;
+        }
+        thinking = true;
+        document.getElementById('msg').innerHTML = '电脑思考中...';
+        setTimeout(aiMove, 150);
+        return;
+    }
+    if(p && p.side === RED){
+        sel = {r:r, c:c};
+        draw();
+    }
+}
+
+function endGame(text){
+    over = true;
+    sel = null;
+    document.getElementById('msg').innerHTML = text;
+    draw();
+}
+
+function allMoves(side){
+    var res = new Array();
+    var r, c, tr, tc;
+    for(r=0; r<ROWS; r++){
+        for(c=0; c<COLS; c++){
+            var p = board[r][c];
+            if(!p || p.side !== side){
+                continue;
+            }
+            for(tr=0; tr<ROWS; tr++){
+                for(tc=0; tc<COLS; tc++){
+                    if(canMove(r, c, tr, tc)){
+                        res.push({fr:r, fc:c, tr:tr, tc:tc});
+                    }
+                }
+            }
+        }
+    }
+    return res;
+}
+
+function pieceValue(p){
+    var v = VALUE[p.type];
+    if(p.type === 'P'){
+        // 过河的兵更值钱
+        if(p.side === RED && findPosRow(p) <= 4){
+            v = 2;
+        }else if(p.side === BLACK && findPosRow(p) >= 5){
+            v = 2;
+        }
+    }
+    return v;
+}
+
+function findPosRow(p){
+    for(var r=0; r<ROWS; r++){
+        for(var c=0; c<COLS; c++){
+            if(board[r][c] === p){
+                return r;
+            }
+        }
+    }
+    return 9;
+}
+
+function aiMove(){
+    var moves = allMoves(BLACK);
+    if(moves.length === 0){
+        endGame('黑方无棋可走，你赢了！');
+        return;
+    }
+    var best = -99999;
+    var bestList = new Array();
+    var i, m, victim, score, mover;
+    for(i=0; i<moves.length; i++){
+        m = moves[i];
+        mover = board[m.fr][m.fc];
+        victim = board[m.tr][m.tc];
+        score = 0;
+        if(victim){
+            score = score + pieceValue(victim) * 10;
+            if(victim.type === 'K'){
+                score = score + 100000;
+            }
+        }
+        // 走这一步之后，自己的子会不会被吃
+        var saved = board[m.tr][m.tc];
+        board[m.tr][m.tc] = mover;
+        board[m.fr][m.fc] = null;
+        var danger = false;
+        var rm = allMoves(RED);
+        for(var j=0; j<rm.length; j++){
+            if(rm[j].tr === m.tr && rm[j].tc === m.tc){
+                danger = true;
+                break;
+            }
+        }
+        board[m.fr][m.fc] = mover;
+        board[m.tr][m.tc] = saved;
+        if(danger){
+            score = score - pieceValue(mover) * 8;
+        }
+        // 往红方阵地压上
+        score = score + m.tr * 0.3;
+        score = score + Math.random() * 2;
+        if(score > best){
+            best = score;
+            bestList = new Array();
+            bestList.push(m);
+        }else if(score === best){
+            bestList.push(m);
+        }
+    }
+    m = bestList[Math.floor(Math.random() * bestList.length)];
+    var eaten = board[m.tr][m.tc];
+    doMove(m.fr, m.fc, m.tr, m.tc);
+    thinking = false;
+    draw();
+    if(eaten && eaten.type === 'K'){
+        endGame('黑方吃掉红帅，电脑赢了。');
+        return;
+    }
+    var rm2 = allMoves(RED);
+    if(rm2.length === 0){
+        endGame('红方无棋可走，电脑赢了。');
+        return;
+    }
+    document.getElementById('msg').innerHTML = '轮到你了（红方）。';
+}
+
+restart();
+</script>
+
+</body>
+</html>

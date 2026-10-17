@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>打砖块</title>
+<style>
+body{font-family:宋体;}
+canvas{border:1px solid #000000;background:#000000;}
+button{font-size:14px;}
+</style>
+</head>
+<body>
+
+<h2>打砖块</h2>
+<p>得分：<span id="score">0</span>　生命：<span id="life">3</span></p>
+<p>玩法：移动鼠标或者用左右方向键控制下面的挡板，把球弹回去打掉上面的砖块。</p>
+
+<canvas id="cv" width="480" height="320"></canvas>
+<br><br>
+<button onclick="restart()">重新开始</button>
+<button onclick="location.href='index.html'">返回列表</button>
+
+<script>
+var cv = document.getElementById('cv');
+var ctx = cv.getContext('2d');
+
+var BALL_R = 6;
+var PADDLE_W = 80;
+var PADDLE_H = 10;
+var ROWS = 5;
+var COLS = 8;
+
+var bx, by, vx, vy;
+var px;
+var bricks;
+var score;
+var life;
+var over;
+var timer;
+
+function restart(){
+    bx = 240;
+    by = 200;
+    vx = 3;
+    vy = -3;
+    px = 200;
+    score = 0;
+    life = 3;
+    over = false;
+    document.getElementById('score').innerHTML = score;
+    document.getElementById('life').innerHTML = life;
+    bricks = new Array();
+    for(var r=0; r<ROWS; r++){
+        bricks.push(new Array());
+        for(var c=0; c<COLS; c++){
+            bricks[r].push(1);
+        }
+    }
+    if(timer){
+        clearInterval(timer);
+    }
+    timer = setInterval(tick, 25);
+    draw();
+}
+
+function brickRect(r, c){
+    var w = cv.width / COLS;
+    var h = 20;
+    return {x:c*w, y:r*h + 30, w:w, h:h};
+}
+
+function tick(){
+    if(over){
+        return;
+    }
+    bx = bx + vx;
+    by = by + vy;
+
+    if(bx - BALL_R < 0 || bx + BALL_R > cv.width){
+        vx = -vx;
+    }
+    if(by - BALL_R < 0){
+        vy = -vy;
+    }
+    if(by + BALL_R > cv.height){
+        life = life - 1;
+        document.getElementById('life').innerHTML = life;
+        if(life <= 0){
+            gameOver();
+            return;
+        }
+        bx = 240;
+        by = 200;
+        vx = 3;
+        vy = -3;
+        draw();
+        return;
+    }
+
+    var py = cv.height - PADDLE_H;
+    if(by + BALL_R > py && bx > px && bx < px + PADDLE_W){
+        by = py - BALL_R;
+        vy = -Math.abs(vy);
+    }
+
+    for(var r=0; r<ROWS; r++){
+        for(var c=0; c<COLS; c++){
+            if(bricks[r][c]){
+                var b = brickRect(r, c);
+                if(bx > b.x && bx < b.x + b.w && by - BALL_R < b.y + b.h && by + BALL_R > b.y){
+                    bricks[r][c] = 0;
+                    vy = -vy;
+                    score = score + 10;
+                    document.getElementById('score').innerHTML = score;
+                }
+            }
+        }
+    }
+
+    var win = true;
+    for(var r2=0; r2<ROWS; r2++){
+        for(var c2=0; c2<COLS; c2++){
+            if(bricks[r2][c2]){
+                win = false;
+            }
+        }
+    }
+    if(win){
+        over = true;
+        clearInterval(timer);
+        draw();
+        ctx.fillStyle = '#00ff00';
+        ctx.font = '30px 宋体';
+        ctx.fillText('全部打完，你赢了！', 90, 170);
+        return;
+    }
+    draw();
+}
+
+function gameOver(){
+    over = true;
+    clearInterval(timer);
+    draw();
+    ctx.fillStyle = '#ff0000';
+    ctx.font = '30px 宋体';
+    ctx.fillText('游戏结束', 180, 170);
+}
+
+function draw(){
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, cv.width, cv.height);
+
+    for(var r=0; r<ROWS; r++){
+        for(var c=0; c<COLS; c++){
+            if(bricks[r][c]){
+                var b = brickRect(r, c);
+                ctx.fillStyle = '#4488ff';
+                ctx.fillRect(b.x+2, b.y+2, b.w-4, b.h-4);
+            }
+        }
+    }
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(px, cv.height - PADDLE_H, PADDLE_W, PADDLE_H);
+
+    ctx.fillStyle = '#ffff00';
+    ctx.beginPath();
+    ctx.arc(bx, by, BALL_R, 0, Math.PI*2);
+    ctx.fill();
+}
+
+cv.onmousemove = function(e){
+    e = e || window.event;
+    var x = e.offsetX;
+    if(x === undefined){
+        x = e.clientX - cv.getBoundingClientRect().left;
+    }
+    px = x - PADDLE_W/2;
+    if(px < 0){
+        px = 0;
+    }
+    if(px > cv.width - PADDLE_W){
+        px = cv.width - PADDLE_W;
+    }
+};
+
+document.onkeydown = function(e){
+    e = e || window.event;
+    var k = e.keyCode;
+    if(k === 37){
+        px = px - 30;
+    }else if(k === 39){
+        px = px + 30;
+    }
+    if(px < 0){
+        px = 0;
+    }
+    if(px > cv.width - PADDLE_W){
+        px = cv.width - PADDLE_W;
+    }
+};
+
+restart();
+</script>
+
+</body>
+</html>

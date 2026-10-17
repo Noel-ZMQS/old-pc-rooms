@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>猜数字</title>
+<style>
+body{font-family:宋体;}
+input{font-size:16px;width:100px;}
+button{font-size:14px;}
+ul{line-height:22px;}
+</style>
+</head>
+<body>
+
+<h2>猜数字</h2>
+<p>电脑想了一个 1 到 100 之间的整数，你来猜。电脑会告诉你"太大了"或者"太小了"。</p>
+
+<input type="text" id="txt">
+<button onclick="doGuess()">猜</button>
+<button onclick="restart()">重新开始</button>
+<button onclick="location.href='index.html'">返回列表</button>
+
+<p id="msg">已经开始了，请输入一个数字。</p>
+<p>猜的次数：<span id="times">0</span></p>
+<ul id="list"></ul>
+
+<script>
+var answer;
+var times;
+
+function restart(){
+    answer = Math.floor(Math.random()*100) + 1;
+    times = 0;
+    document.getElementById('times').innerHTML = times;
+    document.getElementById('msg').innerHTML = '已经开始了，请输入一个数字。';
+    document.getElementById('list').innerHTML = '';
+    document.getElementById('txt').value = '';
+}
+
+function addLog(text){
+    var ul = document.getElementById('list');
+    var li = document.createElement('li');
+    li.innerHTML = text;
+    ul.appendChild(li);
+}
+
+function doGuess(){
+    var s = document.getElementById('txt').value;
+    var n = parseInt(s, 10);
+    if(isNaN(n)){
+        document.getElementById('msg').innerHTML = '请输入一个数字。';
+        return;
+    }
+    if(n < 1 || n > 100){
+        document.getElementById('msg').innerHTML = '请输入 1 到 100 之间的数字。';
+        return;
+    }
+    times = times + 1;
+    document.getElementById('times').innerHTML = times;
+    if(n > answer){
+        document.getElementById('msg').innerHTML = '太大了！';
+        addLog('第 ' + times + ' 次：' + n + ' —— 太大了');
+    }else if(n < answer){
+        document.getElementById('msg').innerHTML = '太小了！';
+        addLog('第 ' + times + ' 次：' + n + ' —— 太小了');
+    }else{
+        document.getElementById('msg').innerHTML = '猜对了！答案是 ' + answer + '，你一共猜了 ' + times + ' 次。';
+        addLog('第 ' + times + ' 次：' + n + ' —— 猜对了！');
+    }
+    document.getElementById('txt').value = '';
+    document.getElementById('txt').focus();
+}
+
+document.getElementById('txt').onkeydown = function(e){
+    e = e || window.event;
+    if(e.keyCode === 13){
+        doGuess();
+    }
+};
+
+restart();
+</script>
+
+</body>
+</html>

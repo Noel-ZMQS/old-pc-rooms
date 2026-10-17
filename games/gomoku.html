@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>五子棋</title>
+<style>
+body{font-family:宋体;}
+canvas{border:1px solid #000000;}
+button{font-size:14px;}
+</style>
+</head>
+<body>
+
+<h2>五子棋</h2>
+<p id="msg">你是黑棋，先走。用鼠标点击交叉点落子，横竖斜任意方向连成 5 个就赢。</p>
+
+<canvas id="cv" width="500" height="500"></canvas>
+<br><br>
+<button onclick="restart()">重新开始</button>
+<button onclick="location.href='index.html'">返回列表</button>
+
+<script>
+var cv = document.getElementById('cv');
+var ctx = cv.getContext('2d');
+var N = 15;      // 15x15 棋盘
+var GS = 32;     // 格子大小
+var PAD = 26;    // 边距
+var R = 13;      // 棋子半径
+
+var EMPTY = 0, BLACK = 1, WHITE = 2;
+var board;
+var over;
+var lastMove;
+var thinking;
+
+function restart(){
+    board = new Array();
+    var r, c;
+    for(r=0; r<N; r++){
+        board.push(new Array());
+        for(c=0; c<N; c++){
+            board[r].push(EMPTY);
+        }
+    }
+    over = false;
+    thinking = false;
+    lastMove = null;
+    document.getElementById('msg').innerHTML = '你是黑棋，先走。点击交叉点落子。';
+    draw();
+}
+
+function px(col){ return PAD + col*GS; }
+function py(row){ return PAD + row*GS; }
+
+function draw(){
+    ctx.fillStyle = '#f0c060';
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1;
+    var i;
+    for(i=0; i<N; i++){
+        ctx.beginPath();
+        ctx.moveTo(px(0), py(i));
+        ctx.lineTo(px(N-1), py(i));
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(px(i), py(0));
+        ctx.lineTo(px(i), py(N-1));
+        ctx.stroke();
+    }
+    // 星位
+    var stars = [[3,3],[3,11],[11,3],[11,11],[7,7]];
+    for(i=0; i<stars.length; i++){
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.arc(px(stars[i][1]), py(stars[i][0]), 3, 0, Math.PI*2);
+        ctx.fill();
+    }
+    var r, c;
+    for(r=0; r<N; r++){
+        for(c=0; c<N; c++){
+            if(board[r][c] !== EMPTY){
+                drawStone(r, c, board[r][c]);
+            }
+        }
+    }
+    if(lastMove){
+        ctx.strokeStyle = '#ff0000';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(px(lastMove.c), py(lastMove.r), R+2, 0, Math.PI*2);
+        ctx.stroke();
+        ctx.lineWidth = 1;
+    }
+}
+
+function drawStone(r, c, who){
+    ctx.beginPath();
+    ctx.arc(px(c), py(r), R, 0, Math.PI*2);
+    if(who === BLACK){
+        ctx.fillStyle = '#111111';
+    }else{
+        ctx.fillStyle = '#fafafa';
+    }
+    ctx.fill();
+    ctx.strokeStyle = '#555555';
+    ctx.stroke();
+}
+
+function inBoard(r, c){
+    return r>=0 && r<N && c>=0 && c<N;
+}
+
+// 从 (r,c) 沿方向连续同色棋子数
+function countDir(r, c, dr, dc, who){
+    var n = 0;
+    var nr = r + dr, nc = c + dc;
+    while(inBoard(nr, nc) && board[nr][nc] === who){
+        n = n + 1;
+        nr = nr + dr;
+        nc = nc + dc;
+    }
+    return n;
+}
+
+function checkWin(r, c, who){
+    var dirs = [[0,1],[1,0],[1,1],[1,-1]];
+    var d, dr, dc, total;
+    for(d=0; d<dirs.length; d++){
+        dr = dirs[d][0];
+        dc = dirs[d][1];
+        total = 1 + countDir(r, c, dr, dc, who) + countDir(r, c, -dr, -dc, who);
+        if(total >= 5){
+            return true;
+        }
+    }
+    return false;
+}
+
+function endGame(text){
+    over = true;
+    document.getElementById('msg').innerHTML = text;
+    draw();
+}
+
+function place(r, c, who){
+    board[r][c] = who;
+    lastMove = {r:r, c:c};
+}
+
+cv.onclick = function(e){
+    e = e || window.event;
+    var x, y;
+    if(e.offsetX !== undefined){
+        x = e.offsetX;
+        y = e.offsetY;
+    }else{
+        var rect = cv.getBoundingClientRect();
+        x = e.clientX - rect.left;
+        y = e.clientY - rect.top;
+    }
+    var c = Math.round((x - PAD)/GS);
+    var r = Math.round((y - PAD)/GS);
+    clickAt(r, c);
+};
+
+function clickAt(r, c){
+    if(over || thinking){
+        return;
+    }
+    if(!inBoard(r, c) || board[r][c] !== EMPTY){
+        return;
+    }
+    place(r, c, BLACK);
+    draw();
+    if(checkWin(r, c, BLACK)){
+        endGame('黑棋连成五子，你赢了！');
+        return;
+    }
+    thinking = true;
+    document.getElementById('msg').innerHTML = '电脑思考中...';
+    setTimeout(aiMove, 100);
+}
+
+// 在某点落 who 的颜色后，该点的棋型得分
+function pointScore(r, c, who){
+    if(!inBoard(r, c) || board[r][c] !== EMPTY){
+        return 0;
+    }
+    var dirs = [[0,1],[1,0],[1,1],[1,-1]];
+    var sum = 0;
+    var d, dr, dc, n1, n2, count, open;
+    for(d=0; d<dirs.length; d++){
+        dr = dirs[d][0];
+        dc = dirs[d][1];
+        n1 = countDir(r, c, dr, dc, who);
+        n2 = countDir(r, c, -dr, -dc, who);
+        count = 1 + n1 + n2;
+        open = 0;
+        if(inBoard(r + (n1+1)*dr, c + (n1+1)*dc) && board[r + (n1+1)*dr][c + (n1+1)*dc] === EMPTY){
+            open = open + 1;
+        }
+        if(inBoard(r - (n2+1)*dr, c - (n2+1)*dc) && board[r - (n2+1)*dr][c - (n2+1)*dc] === EMPTY){
+            open = open + 1;
+        }
+        sum = sum + shapeScore(count, open);
+    }
+    return sum;
+}
+
+function shapeScore(count, open){
+    if(count >= 5){
+        return 100000;
+    }
+    if(count === 4){
+        if(open === 2){ return 10000; }
+        if(open === 1){ return 1000; }
+        return 0;
+    }
+    if(count === 3){
+        if(open === 2){ return 1000; }
+        if(open === 1){ return 100; }
+        return 0;
+    }
+    if(count === 2){
+        if(open === 2){ return 100; }
+        if(open === 1){ return 10; }
+        return 0;
+    }
+    if(open === 2){ return 10; }
+    if(open === 1){ return 1; }
+    return 0;
+}
+
+function hasNeighbor(r, c){
+    var dr, dc, nr, nc;
+    for(dr=-2; dr<=2; dr++){
+        for(dc=-2; dc<=2; dc++){
+            nr = r + dr;
+            nc = c + dc;
+            if(inBoard(nr, nc) && board[nr][nc] !== EMPTY){
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+function aiMove(){
+    var best = -1, br = 7, bc = 7, r, c, s;
+    var attack, defend;
+    for(r=0; r<N; r++){
+        for(c=0; c<N; c++){
+            if(board[r][c] !== EMPTY){
+                continue;
+            }
+            if(!hasNeighbor(r, c)){
+                continue;
+            }
+            attack = pointScore(r, c, WHITE);
+            defend = pointScore(r, c, BLACK);
+            s = attack + defend*0.9;
+            if(s > best){
+                best = s;
+                br = r;
+                bc = c;
+            }
+        }
+    }
+    if(board[br][bc] !== EMPTY){
+        // 棋盘全空（理论上不会走到这）
+        br = 7;
+        bc = 7;
+    }
+    place(br, bc, WHITE);
+    thinking = false;
+    draw();
+    if(checkWin(br, bc, WHITE)){
+        endGame('白棋连成五子，电脑赢了。');
+        return;
+    }
+    document.getElementById('msg').innerHTML = '轮到你了（黑棋）。';
+}
+
+restart();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>2048</title>
+<style>
+body{font-family:宋体;}
+table{border-collapse:collapse;background:#bbada0;}
+td{width:70px;height:70px;text-align:center;vertical-align:middle;
+   font-size:28px;font-weight:bold;border:3px solid #bbada0;background:#cdc1b4;}
+button{font-size:14px;}
+</style>
+</head>
+<body>
+
+<h2>2048</h2>
+<p>得分：<span id="score">0</span></p>
+<p>玩法：用方向键移动方块，相同数字的方块会合并。目标是拼出 2048。</p>
+
+<table id="tb"></table>
+<br>
+<button onclick="restart()">重新开始</button>
+<button onclick="location.href='index.html'">返回列表</button>
+
+<script>
+var N = 4;
+var board;
+var score;
+var cells;
+
+function getColor(v){
+    if(v === 0){ return '#cdc1b4'; }
+    if(v === 2){ return '#eee4da'; }
+    if(v === 4){ return '#ede0c8'; }
+    if(v === 8){ return '#f2b179'; }
+    if(v === 16){ return '#f59563'; }
+    if(v === 32){ return '#f67c5f'; }
+    if(v === 64){ return '#f65e3b'; }
+    if(v === 128){ return '#edcf72'; }
+    if(v === 256){ return '#edcc61'; }
+    if(v === 512){ return '#edc850'; }
+    if(v === 1024){ return '#edc53f'; }
+    if(v === 2048){ return '#edc22e'; }
+    return '#3c3a32';
+}
+
+function getTextColor(v){
+    if(v === 2 || v === 4){ return '#776e65'; }
+    return '#f9f6f2';
+}
+
+function buildTable(){
+    var tb = document.getElementById('tb');
+    tb.innerHTML = '';
+    cells = new Array();
+    for(var r=0; r<N; r++){
+        var tr = document.createElement('tr');
+        cells.push(new Array());
+        for(var c=0; c<N; c++){
+            var td = document.createElement('td');
+            tr.appendChild(td);
+            cells[r].push(td);
+        }
+        tb.appendChild(tr);
+    }
+}
+
+function restart(){
+    board = new Array();
+    for(var r=0; r<N; r++){
+        board.push(new Array());
+        for(var c=0; c<N; c++){
+            board[r].push(0);
+        }
+    }
+    score = 0;
+    document.getElementById('score').innerHTML = score;
+    addRandom();
+    addRandom();
+    draw();
+}
+
+function addRandom(){
+    var empty = new Array();
+    for(var r=0; r<N; r++){
+        for(var c=0; c<N; c++){
+            if(board[r][c] === 0){
+                empty.push({r:r, c:c});
+            }
+        }
+    }
+    if(empty.length === 0){
+        return;
+    }
+    var p = empty[Math.floor(Math.random()*empty.length)];
+    var v = 2;
+    if(Math.random() < 0.5){
+        v = 4;
+    }
+    board[p.r][p.c] = v;
+}
+
+function slide(line){
+    var arr = new Array();
+    var i;
+    for(i=0; i<line.length; i++){
+        if(line[i] !== 0){
+            arr.push(line[i]);
+        }
+    }
+    var res = new Array();
+    for(i=0; i<arr.length; i++){
+        if(i+1 < arr.length && arr[i] === arr[i+1]){
+            res.push(arr[i]*2);
+            score = score + arr[i]*2;
+            i = i + 1;
+        }else{
+            res.push(arr[i]);
+        }
+    }
+    while(res.length < line.length){
+        res.push(0);
+    }
+    return res;
+}
+
+function move(k){
+    var changed = false;
+    var r, c, line, nl;
+    if(k === 37){
+        for(r=0; r<N; r++){
+            line = new Array();
+            for(c=0; c<N; c++){ line.push(board[r][c]); }
+            nl = slide(line);
+            for(c=0; c<N; c++){
+                if(board[r][c] !== nl[c]){ changed = true; }
+                board[r][c] = nl[c];
+            }
+        }
+    }else if(k === 39){
+        for(r=0; r<N; r++){
+            line = new Array();
+            for(c=N-1; c>=0; c--){ line.push(board[r][c]); }
+            nl = slide(line);
+            for(c=0; c<N; c++){
+                if(board[r][N-1-c] !== nl[c]){ changed = true; }
+                board[r][N-1-c] = nl[c];
+            }
+        }
+    }else if(k === 38){
+        for(c=0; c<N; c++){
+            line = new Array();
+            for(r=0; r<N; r++){ line.push(board[r][c]); }
+            nl = slide(line);
+            for(r=0; r<N; r++){
+                if(board[r][c] !== nl[r]){ changed = true; }
+                board[r][c] = nl[r];
+            }
+        }
+    }else if(k === 40){
+        for(c=0; c<N; c++){
+            line = new Array();
+            for(r=N-1; r>=0; r--){ line.push(board[r][c]); }
+            nl = slide(line);
+            for(r=0; r<N; r++){
+                if(board[N-1-r][c] !== nl[r]){ changed = true; }
+                board[N-1-r][c] = nl[r];
+            }
+        }
+    }
+    if(changed){
+        addRandom();
+        document.getElementById('score').innerHTML = score;
+        draw();
+    }
+}
+
+function draw(){
+    for(var r=0; r<N; r++){
+        for(var c=0; c<N; c++){
+            var v = board[r][c];
+            var td = cells[r][c];
+            if(v === 0){
+                td.innerHTML = '';
+            }else{
+                td.innerHTML = v;
+            }
+            td.style.background = getColor(v);
+            td.style.color = getTextColor(v);
+        }
+    }
+}
+
+document.onkeydown = function(e){
+    e = e || window.event;
+    var k = e.keyCode;
+    if(k === 37 || k === 38 || k === 39 || k === 40){
+        move(k);
+    }
+};
+
+buildTable();
+restart();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>黑白棋（翻转棋）</title>
+<style>
+body{font-family:宋体;}
+canvas{border:1px solid #000000;}
+button{font-size:14px;}
+</style>
+</head>
+<body>
+
+<h2>黑白棋（翻转棋）</h2>
+<p id="msg">你是黑棋，先走。点击空格落子，把对方的棋子夹在中间就能翻转成自己的。最后棋子多的一方赢。</p>
+<p>黑棋：<span id="b">2</span>　白棋：<span id="w">2</span></p>
+
+<canvas id="cv" width="400" height="400"></canvas>
+<br><br>
+<button onclick="restart()">重新开始</button>
+<button onclick="location.href='index.html'">返回列表</button>
+
+<script>
+var cv = document.getElementById('cv');
+var ctx = cv.getContext('2d');
+var N = 8;
+var GS = 50;
+
+var EMPTY = 0, BLACK = 1, WHITE = 2;
+var board;
+var turn;
+var over;
+var thinking;
+
+var DIRS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+
+function restart(){
+    board = new Array();
+    var r, c;
+    for(r=0; r<N; r++){
+        board.push(new Array());
+        for(c=0; c<N; c++){
+            board[r].push(EMPTY);
+        }
+    }
+    board[3][3] = WHITE;
+    board[3][4] = BLACK;
+    board[4][3] = BLACK;
+    board[4][4] = WHITE;
+    turn = BLACK;
+    over = false;
+    thinking = false;
+    document.getElementById('msg').innerHTML = '你是黑棋，先走。点击空格落子。';
+    update();
+}
+
+function inBoard(r, c){
+    return r>=0 && r<N && c>=0 && c<N;
+}
+
+// 在 (r,c) 落 color 子，能翻转的棋子列表
+function getFlips(r, c, color){
+    if(!inBoard(r, c) || board[r][c] !== EMPTY){
+        return new Array();
+    }
+    var other = (color === BLACK) ? WHITE : BLACK;
+    var res = new Array();
+    var d, dr, dc, nr, nc, tmp;
+    for(d=0; d<DIRS.length; d++){
+        dr = DIRS[d][0];
+        dc = DIRS[d][1];
+        tmp = new Array();
+        nr = r + dr;
+        nc = c + dc;
+        while(inBoard(nr, nc) && board[nr][nc] === other){
+            tmp.push({r:nr, c:nc});
+            nr = nr + dr;
+            nc = nc + dc;
+        }
+        if(inBoard(nr, nc) && board[nr][nc] === color && tmp.length > 0){
+            for(var i=0; i<tmp.length; i++){
+                res.push(tmp[i]);
+            }
+        }
+    }
+    return res;
+}
+
+function hasMove(color){
+    for(var r=0; r<N; r++){
+        for(var c=0; c<N; c++){
+            if(getFlips(r, c, color).length > 0){
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+function doMove(r, c, color){
+    var flips = getFlips(r, c, color);
+    if(flips.length === 0){
+        return false;
+    }
+    board[r][c] = color;
+    for(var i=0; i<flips.length; i++){
+        board[flips[i].r][flips[i].c] = color;
+    }
+    return true;
+}
+
+function countAll(){
+    var b = 0, w = 0;
+    for(var r=0; r<N; r++){
+        for(var c=0; c<N; c++){
+            if(board[r][c] === BLACK){ b = b + 1; }
+            else if(board[r][c] === WHITE){ w = w + 1; }
+        }
+    }
+    return {b:b, w:w};
+}
+
+function update(){
+    var cnt = countAll();
+    document.getElementById('b').innerHTML = cnt.b;
+    document.getElementById('w').innerHTML = cnt.w;
+    draw();
+}
+
+function draw(){
+    ctx.fillStyle = '#2d7a3e';
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.strokeStyle = '#000000';
+    var i;
+    for(i=0; i<=N; i++){
+        ctx.beginPath();
+        ctx.moveTo(i*GS, 0);
+        ctx.lineTo(i*GS, cv.height);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, i*GS);
+        ctx.lineTo(cv.width, i*GS);
+        ctx.stroke();
+    }
+    // 星位
+    var pts = [[2,2],[2,6],[6,2],[6,6]];
+    for(i=0; i<pts.length; i++){
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.arc(pts[i][1]*GS, pts[i][0]*GS, 3, 0, Math.PI*2);
+        ctx.fill();
+    }
+    var r, c;
+    for(r=0; r<N; r++){
+        for(c=0; c<N; c++){
+            if(board[r][c] !== EMPTY){
+                ctx.beginPath();
+                ctx.arc(c*GS + GS/2, r*GS + GS/2, GS/2 - 4, 0, Math.PI*2);
+                if(board[r][c] === BLACK){
+                    ctx.fillStyle = '#111111';
+                }else{
+                    ctx.fillStyle = '#f5f5f5';
+                }
+                ctx.fill();
+                ctx.strokeStyle = '#333333';
+                ctx.stroke();
+            }
+        }
+    }
+    // 可选位置提示
+    if(!over && turn === BLACK){
+        for(r=0; r<N; r++){
+            for(c=0; c<N; c++){
+                if(getFlips(r, c, BLACK).length > 0){
+                    ctx.fillStyle = '#ffff00';
+                    ctx.beginPath();
+                    ctx.arc(c*GS + GS/2, r*GS + GS/2, 4, 0, Math.PI*2);
+                    ctx.fill();
+                }
+            }
+        }
+    }
+}
+
+function finish(){
+    over = true;
+    var cnt = countAll();
+    var text;
+    if(cnt.b > cnt.w){
+        text = '游戏结束。黑棋 ' + cnt.b + ' 比 ' + cnt.w + '，你赢了！';
+    }else if(cnt.b < cnt.w){
+        text = '游戏结束。白棋 ' + cnt.w + ' 比 ' + cnt.b + '，电脑赢了。';
+    }else{
+        text = '游戏结束。' + cnt.b + ' 比 ' + cnt.w + '，平局。';
+    }
+    document.getElementById('msg').innerHTML = text;
+    update();
+}
+
+function switchTurn(){
+    var next = (turn === BLACK) ? WHITE : BLACK;
+    if(hasMove(next)){
+        turn = next;
+        if(next === WHITE){
+            thinking = true;
+            document.getElementById('msg').innerHTML = '电脑思考中...';
+            update();
+            setTimeout(aiMove, 200);
+        }else{
+            thinking = false;
+            document.getElementById('msg').innerHTML = '轮到你了（黑棋）。';
+            update();
+        }
+    }else if(hasMove(turn)){
+        // 对方无棋可走，继续自己走
+        if(turn === WHITE){
+            thinking = true;
+            document.getElementById('msg').innerHTML = '你没有棋可走，电脑继续下。';
+            update();
+            setTimeout(aiMove, 200);
+        }else{
+            document.getElementById('msg').innerHTML = '电脑没有棋可走，你继续下（黑棋）。';
+            update();
+        }
+    }else{
+        finish();
+    }
+}
+
+cv.onclick = function(e){
+    e = e || window.event;
+    var x, y;
+    if(e.offsetX !== undefined){
+        x = e.offsetX;
+        y = e.offsetY;
+    }else{
+        var rect = cv.getBoundingClientRect();
+        x = e.clientX - rect.left;
+        y = e.clientY - rect.top;
+    }
+    var c = Math.floor(x/GS);
+    var r = Math.floor(y/GS);
+    if(over || thinking || turn !== BLACK){
+        return;
+    }
+    if(!inBoard(r, c)){
+        return;
+    }
+    if(!doMove(r, c, BLACK)){
+        return;
+    }
+    switchTurn();
+};
+
+function cornerScore(r, c){
+    if((r===0 && c===0) || (r===0 && c===N-1) || (r===N-1 && c===0) || (r===N-1 && c===N-1)){
+        return 50;
+    }
+    // 角旁边的格子容易被对方占角，减分
+    if((r<=1 && c<=1) || (r<=1 && c>=N-2) || (r>=N-2 && c<=1) || (r>=N-2 && c>=N-2)){
+        return -8;
+    }
+    if(r===0 || c===0 || r===N-1 || c===N-1){
+        return 5;
+    }
+    return 0;
+}
+
+function aiMove(){
+    var best = -99999, br = -1, bc = -1;
+    var r, c, flips, score;
+    for(r=0; r<N; r++){
+        for(c=0; c<N; c++){
+            flips = getFlips(r, c, WHITE);
+            if(flips.length === 0){
+                continue;
+            }
+            score = flips.length + cornerScore(r, c);
+            if(score > best){
+                best = score;
+                br = r;
+                bc = c;
+            }
+        }
+    }
+    if(br >= 0){
+        doMove(br, bc, WHITE);
+    }
+    thinking = false;
+    switchTurn();
+}
+
+restart();
+</script>
+
+</body>
+</html>

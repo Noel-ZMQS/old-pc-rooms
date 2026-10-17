@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>扫雷</title>
+<style>
+body{font-family:宋体;}
+table{border-collapse:collapse;}
+td{width:30px;height:30px;text-align:center;vertical-align:middle;
+   font-size:18px;font-weight:bold;border:2px solid #888888;
+   background:#cccccc;cursor:pointer;}
+button{font-size:14px;}
+</style>
+</head>
+<body>
+
+<h2>扫雷</h2>
+<p id="msg">左键翻开格子，右键插旗。翻开所有没有雷的格子就赢了。</p>
+<p>剩余雷数：<span id="left">10</span></p>
+
+<table id="tb"></table>
+<br>
+<button onclick="restart()">重新开始</button>
+<button onclick="location.href='index.html'">返回列表</button>
+
+<script>
+var N = 9;
+var MINES = 10;
+var board;
+var show;
+var flag;
+var cells;
+var over;
+var opened;
+var first;
+
+function buildTable(){
+    var tb = document.getElementById('tb');
+    tb.innerHTML = '';
+    cells = new Array();
+    for(var r=0; r<N; r++){
+        var tr = document.createElement('tr');
+        cells.push(new Array());
+        for(var c=0; c<N; c++){
+            var td = document.createElement('td');
+            td.onclick = makeOpen(r, c);
+            td.oncontextmenu = makeFlag(r, c);
+            tr.appendChild(td);
+            cells[r].push(td);
+        }
+        tb.appendChild(tr);
+    }
+}
+
+function makeOpen(r, c){
+    return function(){
+        openCell(r, c);
+    };
+}
+
+function makeFlag(r, c){
+    return function(){
+        if(over || show[r][c]){
+            return false;
+        }
+        flag[r][c] = !flag[r][c];
+        draw();
+        return false;
+    };
+}
+
+function restart(){
+    board = new Array();
+    show = new Array();
+    flag = new Array();
+    for(var r=0; r<N; r++){
+        board.push(new Array());
+        show.push(new Array());
+        flag.push(new Array());
+        for(var c=0; c<N; c++){
+            board[r].push(0);
+            show[r].push(false);
+            flag[r].push(false);
+        }
+    }
+    over = false;
+    opened = 0;
+    first = true;
+    document.getElementById('msg').innerHTML = '左键翻开格子，右键插旗。翻开所有没有雷的格子就赢了。';
+    document.getElementById('left').innerHTML = MINES;
+    draw();
+}
+
+function layMines(sr, sc){
+    var put = 0;
+    while(put < MINES){
+        var r = Math.floor(Math.random()*N);
+        var c = Math.floor(Math.random()*N);
+        if(board[r][c] === 9){
+            continue;
+        }
+        if(r === sr && c === sc){
+            continue;
+        }
+        board[r][c] = 9;
+        put = put + 1;
+    }
+    for(var r2=0; r2<N; r2++){
+        for(var c2=0; c2<N; c2++){
+            if(board[r2][c2] === 9){
+                continue;
+            }
+            var n = 0;
+            for(var dr=-1; dr<=1; dr++){
+                for(var dc=-1; dc<=1; dc++){
+                    var nr = r2 + dr;
+                    var nc = c2 + dc;
+                    if(nr >= 0 && nr < N && nc >= 0 && nc < N){
+                        if(board[nr][nc] === 9){
+                            n = n + 1;
+                        }
+                    }
+                }
+            }
+            board[r2][c2] = n;
+        }
+    }
+}
+
+function openCell(r, c){
+    if(over || show[r][c] || flag[r][c]){
+        return;
+    }
+    if(first){
+        layMines(r, c);
+        first = false;
+    }
+    if(board[r][c] === 9){
+        over = true;
+        for(var i=0; i<N; i++){
+            for(var j=0; j<N; j++){
+                if(board[i][j] === 9){
+                    show[i][j] = true;
+                }
+            }
+        }
+        document.getElementById('msg').innerHTML = '踩到雷了，游戏结束。';
+        draw();
+        return;
+    }
+    spread(r, c);
+    draw();
+    if(opened === N*N - MINES){
+        over = true;
+        document.getElementById('msg').innerHTML = '全部排完，你赢了！';
+    }
+}
+
+function spread(r, c){
+    if(r < 0 || r >= N || c < 0 || c >= N){
+        return;
+    }
+    if(show[r][c] || flag[r][c]){
+        return;
+    }
+    show[r][c] = true;
+    opened = opened + 1;
+    if(board[r][c] !== 0){
+        return;
+    }
+    for(var dr=-1; dr<=1; dr++){
+        for(var dc=-1; dc<=1; dc++){
+            if(dr === 0 && dc === 0){
+                continue;
+            }
+            spread(r+dr, c+dc);
+        }
+    }
+}
+
+function getColor(n){
+    if(n === 1){ return '#0000ff'; }
+    if(n === 2){ return '#008000'; }
+    if(n === 3){ return '#ff0000'; }
+    if(n === 4){ return '#000080'; }
+    if(n === 5){ return '#800000'; }
+    if(n === 6){ return '#008080'; }
+    if(n === 7){ return '#000000'; }
+    return '#808080';
+}
+
+function draw(){
+    var flags = 0;
+    for(var r=0; r<N; r++){
+        for(var c=0; c<N; c++){
+            var td = cells[r][c];
+            if(flag[r][c]){
+                flags = flags + 1;
+                td.innerHTML = 'F';
+                td.style.background = '#ffff99';
+                td.style.color = '#ff0000';
+            }else if(show[r][c]){
+                if(board[r][c] === 9){
+                    td.innerHTML = '*';
+                    td.style.background = '#ff0000';
+                    td.style.color = '#ffffff';
+                }else if(board[r][c] === 0){
+                    td.innerHTML = '';
+                    td.style.background = '#eeeeee';
+                }else{
+                    td.innerHTML = board[r][c];
+                    td.style.background = '#eeeeee';
+                    td.style.color = getColor(board[r][c]);
+                }
+            }else{
+                td.innerHTML = '';
+                td.style.background = '#cccccc';
+            }
+        }
+    }
+    document.getElementById('left').innerHTML = MINES - flags;
+}
+
+buildTable();
+restart();
+</script>
+
+</body>
+</html>
