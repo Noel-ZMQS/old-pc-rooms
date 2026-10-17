@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多引擎搜索</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #ffffff;
+            color: #000000;
+            font-family: Arial, "Microsoft YaHei", sans-serif;
+            padding: 60px 0;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 950px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .search-container {
+            display: table;
+            width: 100%;
+            border-collapse: separate;
+        }
+
+        .search-cell {
+            display: table-cell;
+            vertical-align: top;
+        }
+
+        .search-cell.input-cell {
+            width: 100%;
+        }
+
+        #searchInput {
+            display: block;
+            width: 100%;
+            height: 46px;
+            padding: 0 15px;
+            font-size: 16px;
+            font-family: inherit;
+            line-height: 44px;
+            color: #000;
+            background-color: #fff;
+            border: 2px solid #333;
+            border-right: none;
+            outline: none;
+            border-radius: 0;
+        }
+
+        #searchInput:focus {
+            border-color: #000;
+        }
+
+        #engineSelect {
+            height: 46px;
+            padding: 0 8px;
+            font-size: 14px;
+            font-family: inherit;
+            color: #000;
+            background-color: #fff;
+            border: 2px solid #333;
+            border-right: none;
+            outline: none;
+            cursor: pointer;
+            white-space: nowrap;
+            border-radius: 0;
+        }
+
+        #engineSelect optgroup {
+            font-weight: bold;
+        }
+
+        #engineSelect option {
+            font-weight: normal;
+        }
+
+        #searchButton {
+            height: 46px;
+            padding: 0 30px;
+            font-size: 16px;
+            font-family: inherit;
+            color: #fff;
+            background-color: #000;
+            border: 2px solid #000;
+            cursor: pointer;
+            white-space: nowrap;
+            border-radius: 0;
+        }
+
+        #searchButton:hover {
+            background-color: #333;
+            border-color: #333;
+        }
+
+        .tip {
+            margin-top: 15px;
+            font-size: 13px;
+            color: #666;
+        }
+
+        @media (max-width: 768px) {
+            .search-container {
+                display: block;
+            }
+
+            .search-cell {
+                display: block;
+                width: 100%;
+                margin-bottom: 10px;
+            }
+
+            #searchInput,
+            #engineSelect,
+            #searchButton {
+                width: 100%;
+                border: 2px solid #333;
+            }
+
+            #searchButton {
+                padding: 12px 0;
+                height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="search-container">
+            <span class="search-cell input-cell">
+                <input type="text" id="searchInput" placeholder="输入搜索内容..." autocomplete="off">
+            </span>
+            <span class="search-cell">
+                <select id="engineSelect">
+                    <optgroup label="综合搜索">
+                        <option value="baidu">百度搜索[CN]</option>
+                        <option value="bing">必应搜索[US]</option>
+                        <option value="google">谷歌搜索[US]</option>
+                        <option value="yahoo">雅虎搜索[US]</option>
+                        <option value="yandex">Yandex搜索[RU]</option>
+                    </optgroup>
+
+                    <optgroup label="AI搜索">
+                        <option value="perplexity">Perplexity AI[US]</option>
+                        <option value="youcom">You.com[US]</option>
+                        <option value="phind">Phind[US]</option>
+                        <option value="andisearch">Andi搜索[US]</option>
+                        <option value="chatgpt">ChatGPT[N/A]</option>
+                        <option value="claude">Claude[N/A]</option>
+                        <option value="bard">Google Bard[US]</option>
+                        <option value="deepseek">DeepSeek[CN]</option>
+                        <option value="kimi">Kimi[CN]</option>
+                        <option value="zhipu">智谱清言[CN]</option>
+                        <option value="wenxin">文心一言[CN]</option>
+                        <option value="tongyi">通义千问[CN]</option>
+                        <option value="hunyuan">混元助手[CN]</option>
+                        <option value="doubao">豆包[CN]</option>
+                        <option value="xinghuo">讯飞星火[CN]</option>
+                    </optgroup>
+
+                    <optgroup label="隐私搜索">
+                        <option value="brave">Brave搜索[US]</option>
+                        <option value="ddg">DuckDuckGo[US]</option>
+                        <option value="ecosia">Ecosia搜索[DE]</option>
+                        <option value="gibiru">Gibiru搜索[US]</option>
+                        <option value="metager">MetaGer搜索[DE]</option>
+                        <option value="mojeek">Mojeek搜索[UK]</option>
+                        <option value="peekier">Peekier搜索[N/A]</option>
+                        <option value="presearch">Presearch[US]</option>
+                        <option value="qwant">Qwant搜索[FR]</option>
+                        <option value="searx">SearX搜索[N/A]</option>
+                        <option value="startpage">Startpage搜索[NL]</option>
+                        <option value="swisscows">Swisscows搜索[CH]</option>
+                    </optgroup>
+
+                    <optgroup label="视频搜索">
+                        <option value="bilibili">哔哩哔哩搜索[CN]</option>
+                        <option value="dailymotion">Dailymotion搜索[FR]</option>
+                        <option value="twitch">Twitch搜索[US]</option>
+                        <option value="vimeo">Vimeo搜索[US]</option>
+                        <option value="youtube">YouTube搜索[US]</option>
+                        <option value="netflix">Netflix搜索[US]</option>
+                        <option value="tiktok">TikTok搜索[N/A]</option>
+                        <option value="douyin">抖音搜索[CN]</option>
+                    </optgroup>
+
+                    <optgroup label="开发者搜索">
+                        <option value="bitbucket">Bitbucket搜索[US]</option>
+                        <option value="codepen">CodePen搜索[US]</option>
+                        <option value="github">GitHub搜索[US]</option>
+                        <option value="gitlab">GitLab搜索[US]</option>
+                        <option value="stackoverflow">Stack Overflow[US]</option>
+                    </optgroup>
+
+                    <optgroup label="学术搜索">
+                        <option value="arxiv">arXiv搜索[US]</option>
+                        <option value="google_scholar">谷歌学术[US]</option>
+                        <option value="pubmed">PubMed搜索[US]</option>
+                        <option value="semantic_scholar">语义学者[US]</option>
+                        <option value="wikipedia">维基百科搜索[N/A]</option>
+                    </optgroup>
+
+                    <optgroup label="图片搜索">
+                        <option value="gettyimages">盖蒂图片搜索[US]</option>
+                        <option value="google_images">谷歌图片[US]</option>
+                        <option value="pexels">Pexels搜索[DE]</option>
+                        <option value="pixabay">Pixabay搜索[DE]</option>
+                        <option value="pixiv">Pixiv搜索[JP]</option>
+                        <option value="unsplash">Unsplash搜索[CA]</option>
+                    </optgroup>
+
+                    <optgroup label="购物搜索">
+                        <option value="amazon">亚马逊搜索[US]</option>
+                        <option value="ebay">eBay搜索[US]</option>
+                        <option value="taobao">淘宝搜索[CN]</option>
+                        <option value="jd">京东搜索[CN]</option>
+                    </optgroup>
+
+                    <optgroup label="社交媒体搜索">
+                        <option value="reddit">Reddit搜索[US]</option>
+                        <option value="twitter">Twitter搜索[US]</option>
+                        <option value="facebook">Facebook搜索[US]</option>
+                        <option value="instagram">Instagram搜索[US]</option>
+                    </optgroup>
+
+                    <optgroup label="新闻搜索">
+                        <option value="google_news">Google新闻[US]</option>
+                        <option value="bing_news">必应新闻[US]</option>
+                    </optgroup>
+                </select>
+            </span>
+            <span class="search-cell">
+                <button type="button" id="searchButton">搜索</button>
+            </span>
+        </div>
+
+        <p class="tip">输入关键词，选择搜索引擎后按回车或点击「搜索」，结果将在新窗口打开。</p>
+    </div>
+
+    <script>
+    (function () {
+        var searchInput = document.getElementById('searchInput');
+        var engineSelect = document.getElementById('engineSelect');
+        var searchButton = document.getElementById('searchButton');
+
+        var searchEngines = {
+            baidu: "https://www.baidu.com/s?wd=",
+            bing: "https://www.bing.com/search?q=",
+            google: "https://www.google.com/search?q=",
+            yahoo: "https://search.yahoo.com/search?p=",
+            yandex: "https://yandex.com/search/?text=",
+
+            perplexity: "https://www.perplexity.ai/search?q=",
+            youcom: "https://you.com/search?q=",
+            phind: "https://www.phind.com/search?q=",
+            andisearch: "https://andisearch.com/search?q=",
+            chatgpt: "https://chat.openai.com/chat",
+            claude: "https://claude.ai/",
+            bard: "https://bard.google.com/",
+            deepseek: "https://www.deepseek.com/",
+            kimi: "https://kimi.moonshot.cn/",
+            zhipu: "https://chatglm.cn/",
+            wenxin: "https://yiyan.baidu.com/",
+            tongyi: "https://tongyi.aliyun.com/",
+            hunyuan: "https://hunyuan.tencent.com/",
+            doubao: "https://www.doubao.com/",
+            xinghuo: "https://xinghuo.xfyun.cn/",
+
+            brave: "https://search.brave.com/search?q=",
+            ddg: "https://duckduckgo.com/?q=",
+            ecosia: "https://www.ecosia.org/search?q=",
+            gibiru: "https://gibiru.com/results.html?q=",
+            metager: "https://metager.org/meta/meta.ger3?eingabe=",
+            mojeek: "https://www.mojeek.com/search?q=",
+            peekier: "https://peekier.com/#!",
+            presearch: "https://presearch.com/search?q=",
+            qwant: "https://www.qwant.com/?q=",
+            searx: "https://searx.info/search?q=",
+            startpage: "https://www.startpage.com/do/dsearch?query=",
+            swisscows: "https://swisscows.com/web?query=",
+
+            bilibili: "https://search.bilibili.com/all?keyword=",
+            dailymotion: "https://www.dailymotion.com/search/",
+            twitch: "https://www.twitch.tv/search?term=",
+            vimeo: "https://vimeo.com/search?q=",
+            youtube: "https://www.youtube.com/results?search_query=",
+            netflix: "https://www.netflix.com/search?q=",
+            tiktok: "https://www.tiktok.com/search?q=",
+            douyin: "https://www.douyin.com/search/",
+
+            bitbucket: "https://bitbucket.org/repo/all?name=",
+            codepen: "https://codepen.io/search/pens?q=",
+            github: "https://github.com/search?q=",
+            gitlab: "https://gitlab.com/search?search=",
+            stackoverflow: "https://stackoverflow.com/search?q=",
+
+            arxiv: "https://arxiv.org/search/?query=",
+            google_scholar: "https://scholar.google.com/scholar?q=",
+            pubmed: "https://pubmed.ncbi.nlm.nih.gov/?term=",
+            semantic_scholar: "https://www.semanticscholar.org/search?q=",
+            wikipedia: "https://zh.wikipedia.org/wiki/Special:Search?search=",
+
+            gettyimages: "https://www.gettyimages.com/photos/",
+            google_images: "https://www.google.com/search?tbm=isch&q=",
+            pexels: "https://www.pexels.com/search/",
+            pixabay: "https://pixabay.com/images/search/",
+            pixiv: "https://www.pixiv.net/tags/",
+            unsplash: "https://unsplash.com/s/photos/",
+
+            amazon: "https://www.amazon.com/s?k=",
+            ebay: "https://www.ebay.com/sch/i.html?_nkw=",
+            taobao: "https://s.taobao.com/search?q=",
+            jd: "https://search.jd.com/Search?keyword=",
+
+            reddit: "https://www.reddit.com/search/?q=",
+            twitter: "https://twitter.com/search?q=",
+            facebook: "https://www.facebook.com/search/top?q=",
+            instagram: "https://www.instagram.com/explore/tags/",
+
+            google_news: "https://news.google.com/search?q=",
+            bing_news: "https://www.bing.com/news/search?q="
+        };
+
+        function performSearch() {
+            var query = searchInput.value.replace(/^\s+|\s+$/g, '');
+
+            if (query === '') {
+                alert('请输入搜索内容！');
+                searchInput.focus();
+                return;
+            }
+
+            var url = searchEngines[engineSelect.value];
+
+            if (!url) {
+                alert('请选择有效的搜索引擎！');
+                return;
+            }
+
+            window.open(url + encodeURIComponent(query), '_blank');
+        }
+
+        if (searchButton.addEventListener) {
+            searchButton.addEventListener('click', performSearch, false);
+            searchInput.addEventListener('keydown', function (e) {
+                e = e || window.event;
+                if (e.keyCode === 13) {
+                    performSearch();
+                }
+            }, false);
+        } else {
+            searchButton.attachEvent('onclick', performSearch);
+            searchInput.attachEvent('onkeydown', function () {
+                if (window.event.keyCode === 13) {
+                    performSearch();
+                }
+            });
+        }
+
+        searchInput.focus();
+    })();
+    </script>
+</body>
+</html>
