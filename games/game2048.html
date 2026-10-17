@@ -230,11 +230,21 @@ function draw(){
     }
 }
 
+// 阻止方向键把页面滚动跑偏
+function stopKey(e){
+    if(e.preventDefault){
+        e.preventDefault();
+    }
+    e.returnValue = false;
+    return false;
+}
+
 document.onkeydown = function(e){
     e = e || window.event;
     var k = e.keyCode;
-    if(k === 37 || k === 38 || k === 39 || k === 40){
+    if(k >= 37 && k <= 40){
         move(k);
+        return stopKey(e);
     }
 };
 

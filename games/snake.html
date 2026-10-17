@@ -151,6 +151,15 @@ function draw(){
     }
 }
 
+// 阻止方向键/空格把页面滚动跑偏
+function stopKey(e){
+    if(e.preventDefault){
+        e.preventDefault();
+    }
+    e.returnValue = false;
+    return false;
+}
+
 document.onkeydown = function(e){
     e = e || window.event;
     var k = e.keyCode;
@@ -158,6 +167,9 @@ document.onkeydown = function(e){
     else if(k === 38 && dir.y !== 1){ dir = {x:0, y:-1}; }
     else if(k === 39 && dir.x !== -1){ dir = {x:1, y:0}; }
     else if(k === 40 && dir.y !== -1){ dir = {x:0, y:1}; }
+    if(k >= 37 && k <= 40){
+        return stopKey(e);
+    }
 };
 
 restart();

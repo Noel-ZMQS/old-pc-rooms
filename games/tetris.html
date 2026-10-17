@@ -258,10 +258,23 @@ function draw(){
     }
 }
 
+// 阻止方向键/空格把页面滚动跑偏
+function stopKey(e){
+    if(e.preventDefault){
+        e.preventDefault();
+    }
+    e.returnValue = false;
+    return false;
+}
+
 document.onkeydown = function(e){
     e = e || window.event;
     var k = e.keyCode;
+    var gameKey = (k === 32 || (k >= 37 && k <= 40));
     if(over){
+        if(gameKey){
+            return stopKey(e);
+        }
         return;
     }
     if(k === 37){
@@ -277,6 +290,9 @@ document.onkeydown = function(e){
         drop();
     }
     draw();
+    if(gameKey){
+        return stopKey(e);
+    }
 };
 
 restart();
