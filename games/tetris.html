@@ -3,15 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>俄罗斯方块</title>
 <style>
 canvas{border:1px solid #000000;background:#dddddd;}
-button{font-size:14px;}
+button{font-size:18px;padding:8px 16px;}
 .tips{background:#f6f6f6;border:1px solid #cccccc;padding:10px 14px;margin:12px 0;max-width:640px;}
 .tips h3{font-size:16px;color:#2255aa;margin:12px 0 6px 0;border-bottom:1px solid #dddddd;padding-bottom:3px;}
 .tips ul{margin:0 0 8px 0;padding-left:24px;}
 .tips li{margin:4px;line-height:20px;}
 .tips p{margin:6px 0;line-height:20px;}
+canvas{max-width:100%;height:auto;display:block;}
 </style>
 </head>
 <body>
@@ -55,7 +57,7 @@ button{font-size:14px;}
 <p>得分：<span id="score">0</span></p>
 <p>玩法：左方向键左移，右方向键右移，上方向键旋转，下方向键加速下落，空格键直接落到底。</p>
 
-<canvas id="cv" width="200" height="400"></canvas>
+<canvas id="cv" width="260" height="520"></canvas>
 <br><br>
 <button onclick="restart()">重新开始</button>
 <button onclick="location.href='index.html'">返回列表</button>
@@ -66,7 +68,7 @@ var cv = document.getElementById('cv');
 var ctx = cv.getContext('2d');
 var COLS = 10;
 var ROWS = 20;
-var BS = 20;
+var BS = 26;
 
 var shapes = new Array();
 shapes.push([[1,1,1,1]]);

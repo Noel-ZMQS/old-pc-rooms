@@ -3,15 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>打砖块</title>
 <style>
 canvas{border:1px solid #000000;background:#000000;}
-button{font-size:14px;}
+button{font-size:18px;padding:8px 16px;}
 .tips{background:#f6f6f6;border:1px solid #cccccc;padding:10px 14px;margin:12px 0;max-width:640px;}
 .tips h3{font-size:16px;color:#2255aa;margin:12px 0 6px 0;border-bottom:1px solid #dddddd;padding-bottom:3px;}
 .tips ul{margin:0 0 8px 0;padding-left:24px;}
 .tips li{margin:4px;line-height:20px;}
 .tips p{margin:6px 0;line-height:20px;}
+canvas{max-width:100%;height:auto;display:block;}
 </style>
 </head>
 <body>
@@ -207,12 +209,28 @@ function draw(){
     ctx.fill();
 }
 
+
+// 把鼠标位置换算成画布内部坐标（canvas 被 CSS 缩放时也不会点偏）
+function getPos(e){
+    var rect = cv.getBoundingClientRect();
+    var w = rect.width || cv.width;
+    var h = rect.height || cv.height;
+    var sx = cv.width / w;
+    var sy = cv.height / h;
+    var x, y;
+    if(e.clientX !== undefined && e.clientX !== null){
+        x = (e.clientX - rect.left) * sx;
+        y = (e.clientY - rect.top) * sy;
+    }else{
+        x = e.offsetX * sx;
+        y = e.offsetY * sy;
+    }
+    return {x:x, y:y};
+}
+
 cv.onmousemove = function(e){
     e = e || window.event;
-    var x = e.offsetX;
-    if(x === undefined){
-        x = e.clientX - cv.getBoundingClientRect().left;
-    }
+    var x = getPos(e).x;
     px = x - PADDLE_W/2;
     if(px < 0){
         px = 0;

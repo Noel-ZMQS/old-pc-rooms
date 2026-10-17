@@ -3,13 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>扫雷</title>
 <style>
-table{border-collapse:collapse;}
-td{width:30px;height:30px;text-align:center;vertical-align:middle;
-   font-size:18px;font-weight:bold;border:2px solid #888888;
-   background:#cccccc;cursor:pointer;}
-button{font-size:14px;}
+/* 棋盘自适应：手机上自动缩到屏幕宽度，电脑上最大 440px */
+table{border-collapse:collapse;table-layout:fixed;width:100%;max-width:440px;}
+td{height:46px;text-align:center;vertical-align:middle;
+   font-size:26px;font-weight:bold;border:3px solid #888888;
+   background:#cccccc;cursor:pointer;box-sizing:border-box;}
+button{font-size:18px;padding:8px 16px;}
 .tips{background:#f6f6f6;border:1px solid #cccccc;padding:10px 14px;margin:12px 0;max-width:640px;}
 .tips h3{font-size:16px;color:#2255aa;margin:12px 0 6px 0;border-bottom:1px solid #dddddd;padding-bottom:3px;}
 .tips ul{margin:0 0 8px 0;padding-left:24px;}
