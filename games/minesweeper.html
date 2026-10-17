@@ -5,17 +5,56 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <title>扫雷</title>
 <style>
-body{font-family:宋体;}
 table{border-collapse:collapse;}
 td{width:30px;height:30px;text-align:center;vertical-align:middle;
    font-size:18px;font-weight:bold;border:2px solid #888888;
    background:#cccccc;cursor:pointer;}
 button{font-size:14px;}
+.tips{background:#f6f6f6;border:1px solid #cccccc;padding:10px 14px;margin:12px 0;max-width:640px;}
+.tips h3{font-size:16px;color:#2255aa;margin:12px 0 6px 0;border-bottom:1px solid #dddddd;padding-bottom:3px;}
+.tips ul{margin:0 0 8px 0;padding-left:24px;}
+.tips li{margin:4px;line-height:20px;}
+.tips p{margin:6px 0;line-height:20px;}
 </style>
 </head>
 <body>
 
 <h2>扫雷</h2>
+<div class="tips" id="tips">
+<h3>一、游戏概要</h3>
+<p>扫雷是根据数字提示推理出所有地雷位置的经典逻辑游戏。9×9 的棋盘上藏着 10 颗雷，翻开所有没有雷的格子就赢。</p>
+<h3>二、基本规则</h3>
+<ul>
+<li><b>左键</b>点击翻开格子，<b>右键</b>点击插旗（标记你认为有雷的格子，再点一次取消）。</li>
+<li>翻开的<b>数字</b>表示它周围 8 个格子里共有几颗雷。</li>
+<li>翻到<b>雷</b>就立刻游戏结束。</li>
+<li>翻开的格子是<b>空白</b>（周围 0 颗雷）时，会自动展开周围一片。</li>
+<li><b>第一次点击保证不会是雷</b>，可以放心开局。</li>
+<li>左上角显示剩余雷数（10 减去已插旗数）。</li>
+</ul>
+<h3>三、胜利条件</h3>
+<ul>
+<li><b>胜利</b>：翻开全部 71 个没有雷的格子。</li>
+<li><b>失败</b>：翻到任意一颗雷。</li>
+</ul>
+<h3>四、基本技巧</h3>
+<ul>
+<li>从<b>角落或边缘</b>开始翻，边缘格子周围只有 3-5 格，推理起来更容易。</li>
+<li>数字 <b>1</b> 表示周围 8 格里只有 1 颗雷。</li>
+<li><b>插旗的作用</b>：当你确定某格是雷，插上旗子，这样周围的格子就能当作"已排除一颗"来推理。</li>
+<li><b>点开已确定的空格</b>：当某个数字格周围的雷已经全部插旗，它周围剩下的未翻开格子就都是安全的。</li>
+<li>遇到大片空白展开是好兆头，能一次开一大片。</li>
+</ul>
+<h3>五、进阶技巧</h3>
+<ul>
+<li><b>减法推理</b>：数字格周围已插旗的数量等于它的数字时，它周围其他未翻开的格子<b>全部安全</b>，可以放心点开（也可以双击数字格快速点开）。</li>
+<li><b>1-2-1 定式</b>：边缘出现连续的 1-2-1 时，两个 1 正对着的两格是雷，中间那格是安全的。</li>
+<li><b>1-1 定式</b>：两个并排的 1，如果它们共用的格子已经排除，那么各自另一端的格子是雷。</li>
+<li><b>找"角落 1"</b>：角落上的数字 1（周围只有 3 格），是最简单也最可靠的突破口。</li>
+<li><b>剩雷数辅助</b>：终局时看剩余雷数，如果剩下的未翻开格子数正好等于剩余雷数，那它们全是雷。</li>
+<li><b>必须猜时选角落</b>：实在推不出来时，优先点角落或边缘的格子，踩雷概率相对低。</li>
+</ul>
+</div>
 <p id="msg">左键翻开格子，右键插旗。翻开所有没有雷的格子就赢了。</p>
 <p>剩余雷数：<span id="left">10</span></p>
 
@@ -25,6 +64,7 @@ button{font-size:14px;}
 <button onclick="location.href='index.html'">返回列表</button>
 
 <script>
+
 var N = 9;
 var MINES = 10;
 var board;

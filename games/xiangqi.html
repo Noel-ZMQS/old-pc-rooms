@@ -5,14 +5,64 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <title>中国象棋</title>
 <style>
-body{font-family:宋体;}
 canvas{border:1px solid #000000;}
 button{font-size:14px;}
+.tips{background:#f6f6f6;border:1px solid #cccccc;padding:10px 14px;margin:12px 0;max-width:640px;}
+.tips h3{font-size:16px;color:#2255aa;margin:12px 0 6px 0;border-bottom:1px solid #dddddd;padding-bottom:3px;}
+.tips ul{margin:0 0 8px 0;padding-left:24px;}
+.tips li{margin:4px;line-height:20px;}
+.tips p{margin:6px 0;line-height:20px;}
 </style>
 </head>
 <body>
 
 <h2>中国象棋</h2>
+<div class="tips" id="tips">
+<h3>一、游戏概要</h3>
+<p>中国象棋是两人对弈的棋类游戏，模拟古代两军交战。棋盘 9 列 10 行，中间写着"楚河汉界"的是分界线。你在下方执红棋（帅、仕、相、车、马、炮、兵），电脑在上方执黑棋（将、士、象、车、马、炮、卒）。红方先走。</p>
+<h3>二、基本规则</h3>
+<ul>
+<li><b>车</b>：横竖走直线，距离不限，路上不能有子。威力最大。</li>
+<li><b>马</b>：走"日"字（先直一格再斜一格）。</li>
+<li><b>炮</b>：走直线；但吃子时中间必须<b>恰好隔一个棋子</b>（这个子叫"炮架"，敌我都可以）。</li>
+<li><b>相/象</b>：走"田"字（斜两格）。</li>
+<li><b>仕/士</b>：在九宫格内斜走一格。</li>
+<li><b>将/帅</b>：在九宫格内走一格（上下左右）。</li>
+<li><b>兵/卒</b>：只能向前走一格，不能后退。</li>
+<li>点击自己的棋子选中（出现绿框），再点目标格移动；点另一个自己的棋子可以改选。</li>
+</ul>
+<h3>三、特殊规则</h3>
+<ul>
+<li><b>蹩马腿</b>：马要走的方向上，紧挨着的那一格如果有子，马就跳不过去。</li>
+<li><b>塞象眼</b>：相/象走的"田"字中心格如果有子，就走不了。</li>
+<li><b>象不过河</b>：相只能待在己方阵地（红方在第 5 行及以后），不能过河。</li>
+<li><b>九宫限制</b>：将/帅和仕/士只能在九宫格（中间 3 列，己方 3 行）里活动。</li>
+<li><b>兵过河</b>：兵/卒过了河之后就可以横着走一格，威力大增。</li>
+<li><b>将帅照面</b>：两个将/帅不能在同一列上直接相对（中间没有其他棋子），否则这步棋不合法。</li>
+</ul>
+<h3>四、胜利条件</h3>
+<ul>
+<li>吃掉对方的将（黑）或帅（红）即获胜。</li>
+<li>对方无棋可走（被将死）也算你赢。</li>
+</ul>
+<h3>五、基本技巧</h3>
+<ul>
+<li>开局先动车、马、炮这些能进攻的子，别急着动将和士。</li>
+<li><b>车的价值最高</b>（约等于两个马或炮），尽量不要用车去换小兵。</li>
+<li>用炮吃子时记得找炮架——炮架可以是自己的子，也可以是对方的子。</li>
+<li>走子前先想一句："我这一步走完，对方下一手能不能吃掉我？"</li>
+<li>保护好自己的将，别让它和对方的车处在同一直线或同一列上（会照面或被吃）。</li>
+</ul>
+<h3>六、进阶技巧</h3>
+<ul>
+<li><b>子力价值参考</b>：车 9 分 > 炮 5 分 > 马 4 分 > 仕/相 2 分 > 兵 1 分（过河后升到 2 分）。用低分换高分就是赚。</li>
+<li><b>马炮配合</b>：马控制近处的点，炮打远处的子，两者配合比单独行动强得多。</li>
+<li><b>兑子算账</b>：交换棋子前先算总分，比如用马（4 分）换对方的车（9 分）是血赚。</li>
+<li><b>兵过河当车使</b>：兵过河后能横走，越靠近对方九宫威胁越大，别小看小兵。</li>
+<li><b>别送子</b>：把棋子走到对方兵/马的攻击范围里，等于白送，走之前扫一眼对方所有子的走法。</li>
+<li><b>中路突破</b>：中路（第 5 列）是双方争夺的咽喉，用炮镇中路往往能压制对方。</li>
+</ul>
+</div>
 <p id="msg">你是红方（下方），先走。先点自己的棋子选中，再点目标格。吃掉对方的"将"就赢。</p>
 
 <canvas id="cv" width="460" height="510"></canvas>
@@ -21,6 +71,7 @@ button{font-size:14px;}
 <button onclick="location.href='index.html'">返回列表</button>
 
 <script>
+
 var cv = document.getElementById('cv');
 var ctx = cv.getContext('2d');
 var ROWS = 10, COLS = 9;
@@ -281,7 +332,7 @@ function draw(){
 
     // 楚河汉界
     ctx.fillStyle = '#000000';
-    ctx.font = '20px 宋体';
+    ctx.font = '20px sans-serif';
     ctx.fillText('楚', px(1), py(4) + GS - 12);
     ctx.fillText('河', px(2), py(4) + GS - 12);
     ctx.fillText('汉', px(6), py(4) + GS - 12);
@@ -313,7 +364,7 @@ function draw(){
             ctx.arc(px(c), py(r), 17, 0, Math.PI*2);
             ctx.stroke();
             ctx.fillStyle = (p.side === RED) ? '#cc0000' : '#000000';
-            ctx.font = 'bold 22px 宋体';
+            ctx.font = 'bold 22px sans-serif';
             var nm = (p.side === RED) ? NAME_RED[p.type] : NAME_BLACK[p.type];
             ctx.fillText(nm, px(c) - 11, py(r) + 8);
             ctx.lineWidth = 1;

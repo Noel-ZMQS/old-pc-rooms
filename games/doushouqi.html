@@ -5,14 +5,62 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <title>斗兽棋</title>
 <style>
-body{font-family:宋体;}
 canvas{border:1px solid #000000;}
 button{font-size:14px;}
+.tips{background:#f6f6f6;border:1px solid #cccccc;padding:10px 14px;margin:12px 0;max-width:640px;}
+.tips h3{font-size:16px;color:#2255aa;margin:12px 0 6px 0;border-bottom:1px solid #dddddd;padding-bottom:3px;}
+.tips ul{margin:0 0 8px 0;padding-left:24px;}
+.tips li{margin:4px;line-height:20px;}
+.tips p{margin:6px 0;line-height:20px;}
 </style>
 </head>
 <body>
 
 <h2>斗兽棋</h2>
+<div class="tips" id="tips">
+<h3>一、游戏概要</h3>
+<p>斗兽棋是模拟动物强弱相斗的棋类。棋盘 7 列 9 行，中间有两条河。你在下方执<b>红方</b>（先手），电脑在上方执<b>黑方</b>。双方各有 8 只动物，等级高的动物可以吃掉等级低的。</p>
+<h3>二、基本规则</h3>
+<ul>
+<li>8 种动物的强弱顺序：<b>象 &gt; 狮 &gt; 虎 &gt; 豹 &gt; 狼 &gt; 狗 &gt; 猫 &gt; 鼠</b>。</li>
+<li>等级高的可以吃等级低的，<b>同等级也能吃</b>。</li>
+<li>每次只能走一格（上下左右），不能斜走。</li>
+<li>上方中间是黑方兽穴，下方中间是红方兽穴（画叉的格子是陷阱）。</li>
+<li>点击自己的棋子选中（黄底），再点目标格移动。</li>
+</ul>
+<h3>三、特殊规则</h3>
+<ul>
+<li><b>鼠能吃象，象不能吃鼠</b>——唯一的等级逆转，这是斗兽棋的精髓。</li>
+<li><b>只有鼠能下水</b>，其他动物都不能进河。</li>
+<li><b>鼠在水里不能吃岸上的动物</b>，岸上的动物也不能吃水里的鼠。</li>
+<li><b>狮和虎可以跳河</b>：横着跨过 2 格宽的河，或竖着跨过 3 格长的河。</li>
+<li><b>跳河被鼠挡</b>：如果要跳的路线河里有鼠（敌我都算），就跳不过去。</li>
+<li><b>陷阱降级</b>：画叉的格子是陷阱，敌方动物踏进你方的陷阱后等级变成 0，你<b>任何一只动物</b>都能吃掉它。</li>
+<li><b>不能进自己的兽穴</b>。</li>
+</ul>
+<h3>四、胜利条件</h3>
+<ul>
+<li>走进对方的兽穴（你在上方中间，对方在下方中间）。</li>
+<li>把对方 8 只动物全部吃光。</li>
+</ul>
+<h3>五、基本技巧</h3>
+<ul>
+<li>用鼠去吃对方的象——象是最强的棋子，只有鼠能克制它。</li>
+<li>把敌方动物引到你方陷阱里，等级归零后随便一只小动物都能吃掉。</li>
+<li>别让鼠太早死掉，它是唯一能下水、能吃象的棋子。</li>
+<li>狗擅长守家，把象、狮这些高等级的用来进攻。</li>
+<li>走之前先看看这一步会不会被对方吃掉。</li>
+</ul>
+<h3>六、进阶技巧</h3>
+<ul>
+<li><b>鼠当河霸</b>：让鼠待在河里，对方的狮虎就跳不过河，等于封死一条通道。</li>
+<li><b>陷阱守穴</b>：三个陷阱正好围着你的兽穴，敌人踏进来就被降级，是天然的防御网。</li>
+<li><b>狮虎突袭</b>：跳河可以越过防线直插对方腹地，但跳之前一定确认河里没有鼠。</li>
+<li><b>兑子算价值</b>：象 8 分、狮 7 分、虎 6 分、豹 5 分、狼 4 分、狗 3 分、猫 2 分、鼠 1 分——但鼠能换象，实际价值远高于 1 分。</li>
+<li><b>别把鼠送死</b>：鼠死了，对方的象就无敌了，所以要用别的动物保护鼠。</li>
+<li><b>逼兑象</b>：如果对方的象活着，你的狮虎都不敢靠近，优先想办法用鼠或陷阱换掉它。</li>
+</ul>
+</div>
 <p id="msg">你是红方（下方），先走。先点自己的棋子选中，再点目标格移动。</p>
 <p>大小顺序：象 &gt; 狮 &gt; 虎 &gt; 豹 &gt; 狼 &gt; 狗 &gt; 猫 &gt; 鼠。鼠能吃象，象不能吃鼠。只有鼠能下水，狮虎可以跳过河。走进对方兽穴就赢。</p>
 
@@ -22,6 +70,7 @@ button{font-size:14px;}
 <button onclick="location.href='index.html'">返回列表</button>
 
 <script>
+
 var cv = document.getElementById('cv');
 var ctx = cv.getContext('2d');
 var ROWS = 9, COLS = 7;
@@ -266,7 +315,7 @@ function draw(){
     ctx.fillRect(3*GS, 0, GS, GS);
     ctx.fillRect(3*GS, 8*GS, GS, GS);
     ctx.fillStyle = '#333333';
-    ctx.font = '16px 宋体';
+    ctx.font = '16px sans-serif';
     ctx.fillText('黑穴', 3*GS + 12, 35);
     ctx.fillText('红穴', 3*GS + 12, 8*GS + 35);
 
@@ -318,7 +367,7 @@ function draw(){
             ctx.stroke();
             ctx.lineWidth = 1;
             ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 22px 宋体';
+            ctx.font = 'bold 22px sans-serif';
             ctx.fillText(p.name, c*GS + GS/2 - 11, r*GS + GS/2 + 8);
         }
     }

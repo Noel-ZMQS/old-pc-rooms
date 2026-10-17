@@ -5,14 +5,50 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <title>五子棋</title>
 <style>
-body{font-family:宋体;}
 canvas{border:1px solid #000000;}
 button{font-size:14px;}
+.tips{background:#f6f6f6;border:1px solid #cccccc;padding:10px 14px;margin:12px 0;max-width:640px;}
+.tips h3{font-size:16px;color:#2255aa;margin:12px 0 6px 0;border-bottom:1px solid #dddddd;padding-bottom:3px;}
+.tips ul{margin:0 0 8px 0;padding-left:24px;}
+.tips li{margin:4px;line-height:20px;}
+.tips p{margin:6px 0;line-height:20px;}
 </style>
 </head>
 <body>
 
 <h2>五子棋</h2>
+<div class="tips" id="tips">
+<h3>一、游戏概要</h3>
+<p>五子棋是双方轮流在棋盘交叉点落子的棋类游戏，谁先把自己的棋子连成五个谁就赢。棋盘 15×15，你在下方执黑棋并<b>先手</b>，电脑执白棋。</p>
+<h3>二、基本规则</h3>
+<ul>
+<li>黑先白后，轮流在空的交叉点落一颗子。</li>
+<li>棋子落下后<b>不能移动、不能拿走</b>。</li>
+<li>横、竖、两条斜线，任意一个方向连成 5 个或更多同色棋子即获胜。</li>
+<li>点击交叉点落子，电脑会自动应招。最后落的子会有红圈标记。</li>
+</ul>
+<h3>三、胜利条件</h3>
+<ul>
+<li>横、竖、斜任意方向连成 5 个（或更多）同色棋子。</li>
+<li>超过 5 个也算赢（比如连成 6 个）。</li>
+</ul>
+<h3>四、基本技巧</h3>
+<ul>
+<li>优先下在对方棋子附近，既能进攻也能压制对方。</li>
+<li>看到自己有 3 个连子，先想能不能连成 4 个。</li>
+<li>看到对方有 3 个连子，<b>必须马上堵</b>，否则下一手就输了。</li>
+<li>不要只顾自己连子而忽略对方的威胁——五子棋先手方进攻，后手方要兼顾防守。</li>
+</ul>
+<h3>五、进阶技巧</h3>
+<ul>
+<li><b>活三</b>：两头都空的三连（如 <code>_ X X X _</code>），对方必须堵，否则你下一手就能做成活四。</li>
+<li><b>活四必赢</b>：两头都空的四连（<code>_ X X X X _</code>），对方只能堵一头，你走另一头就成五。</li>
+<li><b>双三</b>：一手棋同时形成两个活三，对方只能堵一个，另一个你就赢了。这是最常用的获胜手段。</li>
+<li><b>防守优先堵中间</b>：对方三连时，堵在中间能同时断掉两边的延伸，堵在两头对方还能往另一头走。</li>
+<li><b>做棋要有耐心</b>：不要一开始就猛冲，先做活三再冲四，让对方疲于防守。</li>
+<li><b>注意对方的双三</b>：如果你只顾进攻，对方悄悄做出双三就来不及了。</li>
+</ul>
+</div>
 <p id="msg">你是黑棋，先走。用鼠标点击交叉点落子，横竖斜任意方向连成 5 个就赢。</p>
 
 <canvas id="cv" width="500" height="500"></canvas>
@@ -21,6 +57,7 @@ button{font-size:14px;}
 <button onclick="location.href='index.html'">返回列表</button>
 
 <script>
+
 var cv = document.getElementById('cv');
 var ctx = cv.getContext('2d');
 var N = 15;      // 15x15 棋盘
