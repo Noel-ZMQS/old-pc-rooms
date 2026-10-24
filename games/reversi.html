@@ -3,17 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>黑白棋（翻转棋）</title>
 <style>
-canvas{border:1px solid #000000;}
-button{font-size:18px;padding:8px 16px;}
+canvas{border:3px solid #000000;}
+button{font-size:14px;}
 .tips{background:#f6f6f6;border:1px solid #cccccc;padding:10px 14px;margin:12px 0;max-width:640px;}
-.tips h3{font-size:16px;color:#2255aa;margin:12px 0 6px 0;border-bottom:1px solid #dddddd;padding-bottom:3px;}
+.tips h3{font-size:16px;color:#008000;margin:12px 0 6px 0;border-bottom:1px solid #dddddd;padding-bottom:3px;}
 .tips ul{margin:0 0 8px 0;padding-left:24px;}
 .tips li{margin:4px;line-height:20px;}
 .tips p{margin:6px 0;line-height:20px;}
-canvas{max-width:100%;height:auto;display:block;}
 </style>
 </head>
 <body>
@@ -52,14 +50,31 @@ canvas{max-width:100%;height:auto;display:block;}
 <li><b>保持机动性</b>：让自己始终比对手有更多可落子的位置（行动力），对手位置越少越被动。</li>
 <li><b>终局清点</b>：最后几步要精确算，有时差一子就是胜负，最后 8-10 个空格时要数清楚。</li>
 </ul>
+<h3>六、模式与难度</h3>
+<ul>
+<li>棋盘上方的下拉菜单用来切换玩法：<b>人机对战（简单 / 普通 / 困难）</b>和<b>本地双人对战</b>。</li>
+<li><b>本地双人对战</b>：两个人用同一个鼠标轮流落子，黑棋先走，切换模式会自动重新开局。</li>
+<li><b>简单</b>：电脑随便下；<b>普通</b>：看能翻多少子、抢角；<b>困难</b>：抢角、少翻子，还会压缩你的可落子位置。</li>
+<li>双人模式下<b>两边都会显示提示圆点</b>：黄点是黑棋能下的位置，蓝点是白棋能下的位置。</li>
+</ul>
 </div>
+<p>
+模式：
+<select id="modeSel" onchange="changeMode()" style="padding:12px 28px;font-size:16px;">
+<option value="e1">人机对战（简单）</option>
+<option value="e2" selected>人机对战（普通）</option>
+<option value="e3">人机对战（困难）</option>
+<option value="p2">本地双人对战</option>
+</select>
+</p>
+
 <p id="msg">你是黑棋，先走。点击空格落子，把对方的棋子夹在中间就能翻转成自己的。最后棋子多的一方赢。</p>
 <p>黑棋：<span id="b">2</span>　白棋：<span id="w">2</span></p>
 
 <canvas id="cv" width="400" height="400"></canvas>
 <br><br>
-<button onclick="restart()">重新开始</button>
-<button onclick="location.href='index.html'">返回列表</button>
+<button onclick="restart()" style="padding:12px 28px;font-size:16px;">重新开始</button>
+<button onclick="location.href='index.html'" style="padding:12px 28px;font-size:16px;">返回列表</button>
 
 <script>
 
@@ -73,6 +88,19 @@ var board;
 var turn;
 var over;
 var thinking;
+var MODE = 'e2';   // e1/e2/e3 人机(简单/普通/困难)，p2 本地双人
+var LEVEL = 2;
+
+function changeMode(){
+    var s = document.getElementById('modeSel');
+    MODE = s.options[s.selectedIndex].value;
+    if(MODE === 'p2'){
+        LEVEL = 0;
+    }else{
+        LEVEL = parseInt(MODE.substring(1), 10);
+    }
+    restart();
+}
 
 var DIRS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
 
@@ -92,7 +120,11 @@ function restart(){
     turn = BLACK;
     over = false;
     thinking = false;
-    document.getElementById('msg').innerHTML = '你是黑棋，先走。点击空格落子。';
+    if(MODE === 'p2'){
+        document.getElementById('msg').innerHTML = '本地双人：黑棋先走，两个人轮流落子。';
+    }else{
+        document.getElementById('msg').innerHTML = '你是黑棋，先走。点击空格落子。';
+    }
     update();
 }
 
@@ -209,12 +241,22 @@ function draw(){
             }
         }
     }
-    // 可选位置提示
-    if(!over && turn === BLACK){
+    // 可选位置提示（双人模式两边都提示，人机模式只提示黑棋）
+    var showHint = false;
+    if(!over){
+        if(MODE === 'p2' || turn === BLACK){
+            showHint = true;
+        }
+    }
+    if(showHint){
         for(r=0; r<N; r++){
             for(c=0; c<N; c++){
-                if(getFlips(r, c, BLACK).length > 0){
-                    ctx.fillStyle = '#ffff00';
+                if(getFlips(r, c, turn).length > 0){
+                    if(turn === BLACK){
+                        ctx.fillStyle = '#ffff00';
+                    }else{
+                        ctx.fillStyle = '#00aaff';
+                    }
                     ctx.beginPath();
                     ctx.arc(c*GS + GS/2, r*GS + GS/2, 4, 0, Math.PI*2);
                     ctx.fill();
@@ -224,14 +266,23 @@ function draw(){
     }
 }
 
+function sideName(who){
+    if(who === BLACK){
+        if(MODE === 'p2'){ return '黑棋'; }
+        return '你';
+    }
+    if(MODE === 'p2'){ return '白棋'; }
+    return '电脑';
+}
+
 function finish(){
     over = true;
     var cnt = countAll();
     var text;
     if(cnt.b > cnt.w){
-        text = '游戏结束。黑棋 ' + cnt.b + ' 比 ' + cnt.w + '，你赢了！';
+        text = '游戏结束。黑棋 ' + cnt.b + ' 比 ' + cnt.w + '，' + sideName(BLACK) + '赢了！';
     }else if(cnt.b < cnt.w){
-        text = '游戏结束。白棋 ' + cnt.w + ' 比 ' + cnt.b + '，电脑赢了。';
+        text = '游戏结束。白棋 ' + cnt.w + ' 比 ' + cnt.b + '，' + sideName(WHITE) + '赢了。';
     }else{
         text = '游戏结束。' + cnt.b + ' 比 ' + cnt.w + '，平局。';
     }
@@ -243,6 +294,11 @@ function switchTurn(){
     var next = (turn === BLACK) ? WHITE : BLACK;
     if(hasMove(next)){
         turn = next;
+        if(MODE === 'p2'){
+            document.getElementById('msg').innerHTML = '轮到' + sideName(turn) + '走（本地双人）。';
+            update();
+            return;
+        }
         if(next === WHITE){
             thinking = true;
             document.getElementById('msg').innerHTML = '电脑思考中...';
@@ -255,6 +311,11 @@ function switchTurn(){
         }
     }else if(hasMove(turn)){
         // 对方无棋可走，继续自己走
+        if(MODE === 'p2'){
+            document.getElementById('msg').innerHTML = sideName(next) + '没有棋可走，' + sideName(turn) + '继续下。';
+            update();
+            return;
+        }
         if(turn === WHITE){
             thinking = true;
             document.getElementById('msg').innerHTML = '你没有棋可走，电脑继续下。';
@@ -269,40 +330,29 @@ function switchTurn(){
     }
 }
 
-
-// 把鼠标位置换算成画布内部坐标（canvas 被 CSS 缩放时也不会点偏）
-function getPos(e){
-    var rect = cv.getBoundingClientRect();
-    var w = rect.width || cv.width;
-    var h = rect.height || cv.height;
-    var sx = cv.width / w;
-    var sy = cv.height / h;
-    var x, y;
-    if(e.clientX !== undefined && e.clientX !== null){
-        x = (e.clientX - rect.left) * sx;
-        y = (e.clientY - rect.top) * sy;
-    }else{
-        x = e.offsetX * sx;
-        y = e.offsetY * sy;
-    }
-    return {x:x, y:y};
-}
-
 cv.onclick = function(e){
     e = e || window.event;
     var x, y;
-    var pos = getPos(e);
-    x = pos.x;
-    y = pos.y;
+    if(e.offsetX !== undefined){
+        x = e.offsetX;
+        y = e.offsetY;
+    }else{
+        var rect = cv.getBoundingClientRect();
+        x = e.clientX - rect.left;
+        y = e.clientY - rect.top;
+    }
     var c = Math.floor(x/GS);
     var r = Math.floor(y/GS);
-    if(over || thinking || turn !== BLACK){
+    if(over || thinking){
+        return;
+    }
+    if(MODE !== 'p2' && turn !== BLACK){
         return;
     }
     if(!inBoard(r, c)){
         return;
     }
-    if(!doMove(r, c, BLACK)){
+    if(!doMove(r, c, turn)){
         return;
     }
     switchTurn();
@@ -322,6 +372,27 @@ function cornerScore(r, c){
     return 0;
 }
 
+// 一方当前能落子的位置个数（行动力）
+function countMoves(color){
+    var n = 0, r, c;
+    for(r=0; r<N; r++){
+        for(c=0; c<N; c++){
+            if(getFlips(r, c, color).length > 0){
+                n = n + 1;
+            }
+        }
+    }
+    return n;
+}
+
+function undoMove(r, c, flips){
+    var i;
+    board[r][c] = EMPTY;
+    for(i=0; i<flips.length; i++){
+        board[flips[i].r][flips[i].c] = BLACK;
+    }
+}
+
 function aiMove(){
     var best = -99999, br = -1, bc = -1;
     var r, c, flips, score;
@@ -331,7 +402,19 @@ function aiMove(){
             if(flips.length === 0){
                 continue;
             }
-            score = flips.length + cornerScore(r, c);
+            if(LEVEL === 1){
+                // 简单：随便挑一个能下的位置
+                score = Math.random()*100;
+            }else if(LEVEL === 3){
+                // 困难：抢角、少翻子、压制对方的行动力
+                score = cornerScore(r, c)*2 - flips.length*0.5;
+                doMove(r, c, WHITE);
+                score = score + (countMoves(WHITE) - countMoves(BLACK))*3;
+                undoMove(r, c, flips);
+            }else{
+                // 普通：原来的算法
+                score = flips.length + cornerScore(r, c);
+            }
             if(score > best){
                 best = score;
                 br = r;

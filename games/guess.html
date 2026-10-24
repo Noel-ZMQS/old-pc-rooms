@@ -3,14 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>猜数字</title>
 <style>
 input{font-size:16px;width:100px;}
-button{font-size:18px;padding:8px 16px;}
+button{font-size:14px;}
 ul{line-height:22px;}
 .tips{background:#f6f6f6;border:1px solid #cccccc;padding:10px 14px;margin:12px 0;max-width:640px;}
-.tips h3{font-size:16px;color:#2255aa;margin:12px 0 6px 0;border-bottom:1px solid #dddddd;padding-bottom:3px;}
+.tips h3{font-size:16px;color:#008000;margin:12px 0 6px 0;border-bottom:1px solid #dddddd;padding-bottom:3px;}
 .tips ul{margin:0 0 8px 0;padding-left:24px;}
 .tips li{margin:4px;line-height:20px;}
 .tips p{margin:6px 0;line-height:20px;}
@@ -54,10 +53,10 @@ ul{line-height:22px;}
 </div>
 <p>电脑想了一个 1 到 100 之间的整数，你来猜。电脑会告诉你"太大了"或者"太小了"。</p>
 
-<input type="text" id="txt">
-<button onclick="doGuess()">猜</button>
-<button onclick="restart()">重新开始</button>
-<button onclick="location.href='index.html'">返回列表</button>
+<input type="text" id="txt" style="padding:12px 28px;font-size:16px;">
+<button onclick="doGuess()" style="padding:12px 28px;font-size:16px;">猜</button>
+<button onclick="restart()" style="padding:12px 28px;font-size:16px;">重新开始</button>
+<button onclick="location.href='index.html'" style="padding:12px 28px;font-size:16px;">返回列表</button>
 
 <p id="msg">已经开始了，请输入一个数字。</p>
 <p>猜的次数：<span id="times">0</span></p>

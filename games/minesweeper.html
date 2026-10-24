@@ -3,28 +3,35 @@
 <head>
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>扫雷</title>
 <style>
-/* 棋盘自适应：手机上自动缩到屏幕宽度，电脑上最大 440px */
-table{border-collapse:collapse;table-layout:fixed;width:100%;max-width:440px;}
-td{height:46px;text-align:center;vertical-align:middle;
-   font-size:26px;font-weight:bold;border:3px solid #888888;
-   background:#cccccc;cursor:pointer;box-sizing:border-box;}
-button{font-size:18px;padding:8px 16px;}
+table{border-collapse:collapse;}
+td{width:30px;height:30px;text-align:center;vertical-align:middle;
+   font-size:18px;font-weight:bold;border:2px solid #888888;
+   background:#cccccc;cursor:pointer;}
+button{font-size:14px;}
 .tips{background:#f6f6f6;border:1px solid #cccccc;padding:10px 14px;margin:12px 0;max-width:640px;}
-.tips h3{font-size:16px;color:#2255aa;margin:12px 0 6px 0;border-bottom:1px solid #dddddd;padding-bottom:3px;}
+.tips h3{font-size:16px;color:#008000;margin:12px 0 6px 0;border-bottom:1px solid #dddddd;padding-bottom:3px;}
 .tips ul{margin:0 0 8px 0;padding-left:24px;}
 .tips li{margin:4px;line-height:20px;}
 .tips p{margin:6px 0;line-height:20px;}
+.lvbar{margin:12px 0;max-width:640px;padding:8px 12px;
+       background:#f6f6f6;border:1px solid #cccccc;}
+.lvbar b{font-size:14px;margin-right:6px;}
+.lvbar select{font-size:14px;font-family:inherit;padding:3px 4px;margin-right:8px;cursor:pointer;}
+.lvbar .note{font-size:13px;color:#666666;}
+.wrap{overflow:auto;max-width:100%;padding-bottom:6px;}
+#tb.big td{width:26px;height:26px;font-size:16px;}
+#tb.huge td{width:22px;height:22px;font-size:14px;}
 </style>
 </head>
 <body>
 
 <h2>扫雷</h2>
+
 <div class="tips" id="tips">
 <h3>一、游戏概要</h3>
-<p>扫雷是根据数字提示推理出所有地雷位置的经典逻辑游戏。9×9 的棋盘上藏着 10 颗雷，翻开所有没有雷的格子就赢。</p>
+<p id="t-summary">扫雷是根据数字提示推理出所有地雷位置的经典逻辑游戏。9×9 的棋盘上藏着 10 颗雷，翻开所有没有雷的格子就赢。</p>
 <h3>二、基本规则</h3>
 <ul>
 <li><b>左键</b>点击翻开格子，<b>右键</b>点击插旗（标记你认为有雷的格子，再点一次取消）。</li>
@@ -32,11 +39,11 @@ button{font-size:18px;padding:8px 16px;}
 <li>翻到<b>雷</b>就立刻游戏结束。</li>
 <li>翻开的格子是<b>空白</b>（周围 0 颗雷）时，会自动展开周围一片。</li>
 <li><b>第一次点击保证不会是雷</b>，可以放心开局。</li>
-<li>左上角显示剩余雷数（10 减去已插旗数）。</li>
+<li>左上角显示剩余雷数（<span id="t-mines">10</span> 减去已插旗数）。</li>
 </ul>
 <h3>三、胜利条件</h3>
 <ul>
-<li><b>胜利</b>：翻开全部 71 个没有雷的格子。</li>
+<li id="t-win"><b>胜利</b>：翻开全部 71 个没有雷的格子。</li>
 <li><b>失败</b>：翻到任意一颗雷。</li>
 </ul>
 <h3>四、基本技巧</h3>
@@ -57,18 +64,33 @@ button{font-size:18px;padding:8px 16px;}
 <li><b>必须猜时选角落</b>：实在推不出来时，优先点角落或边缘的格子，踩雷概率相对低。</li>
 </ul>
 </div>
+
+<!-- 难度下拉菜单：放在说明后面 -->
+
+<b>难度：</b>
+<select id="lvSel" onchange="onLevelChange()" style="padding:12px 28px;font-size:16px;">
+<option value="0">初级 9×9 · 10 雷</option>
+<option value="1">中级 16×16 · 40 雷</option>
+<option value="2">高级 16×30 · 99 雷</option>
+<option value="3">自定义…</option>
+</select>
+
+
+
 <p id="msg">左键翻开格子，右键插旗。翻开所有没有雷的格子就赢了。</p>
 <p>剩余雷数：<span id="left">10</span></p>
 
-<table id="tb"></table>
+<div class="wrap"><table id="tb"></table></div>
 <br>
-<button onclick="restart()">重新开始</button>
-<button onclick="location.href='index.html'">返回列表</button>
+<button onclick="restart()"style=" padding:12px 28px;font-size:16px;">重新开始</button>
+<button onclick="location.href='index.html'" style="padding:12px 28px;font-size:16px;">返回列表</button>
 
 <script>
 
-var N = 9;
-var MINES = 10;
+var ROWS = 9;        /* 行数 */
+var COLS = 9;        /* 列数 */
+var MINES = 10;      /* 雷数 */
+var level = 0;       /* 当前难度编号：0初级 1中级 2高级 3自定义 */
 var board;
 var show;
 var flag;
@@ -80,11 +102,14 @@ var first;
 function buildTable(){
     var tb = document.getElementById('tb');
     tb.innerHTML = '';
+    /* 格子多的时候缩小单元格，避免棋盘撑爆页面 */
+    tb.className = (ROWS > 16 || COLS > 16) ? 'big' : '';
+    if(COLS > 24){ tb.className = 'huge'; }
     cells = new Array();
-    for(var r=0; r<N; r++){
+    for(var r=0; r<ROWS; r++){
         var tr = document.createElement('tr');
         cells.push(new Array());
-        for(var c=0; c<N; c++){
+        for(var c=0; c<COLS; c++){
             var td = document.createElement('td');
             td.onclick = makeOpen(r, c);
             td.oncontextmenu = makeFlag(r, c);
@@ -112,15 +137,122 @@ function makeFlag(r, c){
     };
 }
 
+/* 三档预设难度：[行数, 列数, 雷数] */
+var LEVELS = [
+    [9, 9, 10],
+    [16, 16, 40],
+    [16, 30, 99]
+];
+
+/* 切换难度：rows 行 cols 列 mines 颗雷 */
+function setLevel(rows, cols, mines){
+    ROWS = rows;
+    COLS = cols;
+    MINES = mines;
+    level = 3;                       /* 先假定是自定义，再回匹配预设档 */
+    for(var i=0; i<LEVELS.length; i++){
+        if(rows === LEVELS[i][0] && cols === LEVELS[i][1] && mines === LEVELS[i][2]){
+            level = i;
+            break;
+        }
+    }
+    syncLevelUI();
+    updateTips();
+    /* 尺寸变了要重建表格，尺寸没变复用即可 */
+    if(!cells || cells.length !== ROWS || cells[0].length !== COLS){
+        buildTable();
+    }
+    restart();
+}
+
+/* 下拉菜单选中项变化时调用 */
+function onLevelChange(){
+    var sel = document.getElementById('lvSel');
+    var i = parseInt(sel.value, 10);
+    if(i === 3){
+        customLevel();               /* 自定义：弹窗输入，取消则回滚菜单 */
+        return;
+    }
+    if(i >= 0 && i < LEVELS.length){
+        setLevel(LEVELS[i][0], LEVELS[i][1], LEVELS[i][2]);
+    }
+}
+
+/* 让下拉菜单与当前 ROWS/COLS/MINES 保持一致（控制台切难度时也会同步） */
+function syncLevelUI(){
+    var sel = document.getElementById('lvSel');
+    if(!sel){ return; }
+    sel.value = String(level);
+    if(level === 3){
+        /* 自定义档：把当前行列雷数写进菜单文字，方便看清 */
+        for(var k=0; k<sel.options.length; k++){
+            if(sel.options[k].value === '3'){
+                sel.options[k].text = '自定义 ' + ROWS + '×' + COLS + ' · ' + MINES + ' 雷';
+            }
+        }
+    }else{
+        for(var k2=0; k2<sel.options.length; k2++){
+            if(sel.options[k2].value === '3'){ sel.options[k2].text = '自定义…'; }
+        }
+    }
+}
+
+/* 自定义难度：弹窗输入，带校验；中途取消则把菜单回滚到原难度 */
+function customLevel(){
+    var sr = prompt('请输入行数（5 - 30）：', String(ROWS));
+    if(sr === null){ syncLevelUI(); return; }
+    var sc = prompt('请输入列数（5 - 40）：', String(COLS));
+    if(sc === null){ syncLevelUI(); return; }
+    var sm = prompt('请输入雷数：', String(MINES));
+    if(sm === null){ syncLevelUI(); return; }
+    var r = parseInt(sr, 10);
+    var c = parseInt(sc, 10);
+    var m = parseInt(sm, 10);
+    if(isNaN(r) || isNaN(c) || isNaN(m)){
+        alert('请输入数字。');
+        syncLevelUI();
+        return;
+    }
+    if(r < 5 || r > 30 || c < 5 || c > 40){
+        alert('行数需在 5-30 之间，列数需在 5-40 之间。');
+        syncLevelUI();
+        return;
+    }
+    if(m < 1 || m > r*c - 10){
+        alert('雷数需在 1 到 ' + (r*c - 10) + ' 之间（至少留出 10 个空格）。');
+        syncLevelUI();
+        return;
+    }
+    setLevel(r, c, m);
+}
+
+/* 说明文字里写死的数字跟随难度变化 */
+function updateTips(){
+    var total = ROWS * COLS;
+    var safe = total - MINES;
+    var s = document.getElementById('t-summary');
+    var w = document.getElementById('t-win');
+    var m = document.getElementById('t-mines');
+    if(s){
+        s.innerHTML = '扫雷是根据数字提示推理出所有地雷位置的经典逻辑游戏。'
+            + ROWS + '×' + COLS + ' 的棋盘（共 ' + total + ' 格）上藏着 '
+            + MINES + ' 颗雷，翻开所有没有雷的格子就赢。';
+    }
+    if(w){
+        w.innerHTML = '<b>胜利</b>：翻开全部 ' + safe + ' 个没有雷的格子。';
+    }
+    if(m){ m.innerHTML = String(MINES); }
+}
+
 function restart(){
     board = new Array();
     show = new Array();
     flag = new Array();
-    for(var r=0; r<N; r++){
+    for(var r=0; r<ROWS; r++){
         board.push(new Array());
         show.push(new Array());
         flag.push(new Array());
-        for(var c=0; c<N; c++){
+        for(var c=0; c<COLS; c++){
             board[r].push(0);
             show[r].push(false);
             flag[r].push(false);
@@ -137,8 +269,8 @@ function restart(){
 function layMines(sr, sc){
     var put = 0;
     while(put < MINES){
-        var r = Math.floor(Math.random()*N);
-        var c = Math.floor(Math.random()*N);
+        var r = Math.floor(Math.random()*ROWS);
+        var c = Math.floor(Math.random()*COLS);
         if(board[r][c] === 9){
             continue;
         }
@@ -148,8 +280,8 @@ function layMines(sr, sc){
         board[r][c] = 9;
         put = put + 1;
     }
-    for(var r2=0; r2<N; r2++){
-        for(var c2=0; c2<N; c2++){
+    for(var r2=0; r2<ROWS; r2++){
+        for(var c2=0; c2<COLS; c2++){
             if(board[r2][c2] === 9){
                 continue;
             }
@@ -158,7 +290,7 @@ function layMines(sr, sc){
                 for(var dc=-1; dc<=1; dc++){
                     var nr = r2 + dr;
                     var nc = c2 + dc;
-                    if(nr >= 0 && nr < N && nc >= 0 && nc < N){
+                    if(nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS){
                         if(board[nr][nc] === 9){
                             n = n + 1;
                         }
@@ -180,8 +312,8 @@ function openCell(r, c){
     }
     if(board[r][c] === 9){
         over = true;
-        for(var i=0; i<N; i++){
-            for(var j=0; j<N; j++){
+        for(var i=0; i<ROWS; i++){
+            for(var j=0; j<COLS; j++){
                 if(board[i][j] === 9){
                     show[i][j] = true;
                 }
@@ -193,14 +325,14 @@ function openCell(r, c){
     }
     spread(r, c);
     draw();
-    if(opened === N*N - MINES){
+    if(opened === ROWS*COLS - MINES){
         over = true;
         document.getElementById('msg').innerHTML = '全部排完，你赢了！';
     }
 }
 
 function spread(r, c){
-    if(r < 0 || r >= N || c < 0 || c >= N){
+    if(r < 0 || r >= ROWS || c < 0 || c >= COLS){
         return;
     }
     if(show[r][c] || flag[r][c]){
@@ -234,8 +366,8 @@ function getColor(n){
 
 function draw(){
     var flags = 0;
-    for(var r=0; r<N; r++){
-        for(var c=0; c<N; c++){
+    for(var r=0; r<ROWS; r++){
+        for(var c=0; c<COLS; c++){
             var td = cells[r][c];
             if(flag[r][c]){
                 flags = flags + 1;
@@ -265,7 +397,166 @@ function draw(){
 }
 
 buildTable();
+syncLevelUI();
+updateTips();
 restart();
+
+/* ==========================================================================
+   隐藏调试后门（作弊功能）
+   --------------------------------------------------------------------------
+   · 页面上没有任何按钮、链接、快捷键入口，只能用浏览器开发者工具(F12)启用
+   · 第一次点击之前雷还没生成，开启后会提示先点一格
+   · 语法全部为 ES5（var / function / 无箭头函数 / 无模板字符串），IE11 可用
+   · 三个难度下通用
+   --------------------------------------------------------------------------
+   IE11 / Chrome / Edge / Firefox 控制台里粘贴任一条命令回车即可：
+
+       MSDBG.on()      开启透视：所有雷显示为粉底红字 "B"
+       MSDBG.off()     关闭透视，画面恢复正常
+       MSDBG.toggle()  开关
+       MSDBG.state()   查看当前开关状态与雷数
+       MSDBG.list()    在控制台列出全部雷的坐标（行,列 从 1 开始数）
+       MSDBG.flag()    一键给所有雷插旗（剩余雷数归零，点雷也不会死）
+       MSDBG.level(16,30,99)  用控制台切难度（行,列,雷）
+       MSDBG.help()    打印这份命令清单
+
+   偷懒写法（效果同 on/off，直接给变量赋值即可）：
+       __cheat = "on"     打开
+       __cheat = "off"    关闭
+   ========================================================================== */
+(function(){
+    var MARK = 'B';              /* 雷的显示字符 */
+    var BG   = '#ffd9d9';        /* 雷的底色 */
+    var FG   = '#c00000';        /* 雷的字色 */
+    var enabled = false;
+    var origDraw = draw;         /* 保存原始 draw，游戏逻辑一行都不改 */
+
+    function log(s){
+        if(typeof window.console !== 'undefined' && window.console && typeof window.console.log === 'function'){
+            window.console.log(s);
+        }
+    }
+
+    /* 在原始绘制之后叠一层"透视"：把所有雷重新刷成标记样式 */
+    function paint(){
+        if(!enabled || !cells || !board){ return; }
+        if(first){
+            log('[扫雷·作弊] 雷还没布，先左键随便点一格（首点必不踩雷），之后自动显示。');
+            return;
+        }
+        var n = 0;
+        for(var r=0; r<ROWS; r++){
+            for(var c=0; c<COLS; c++){
+                if(board[r][c] === 9){
+                    cells[r][c].innerHTML = MARK;
+                    cells[r][c].style.background = BG;
+                    cells[r][c].style.color = FG;
+                    n = n + 1;
+                }
+            }
+        }
+        return n;
+    }
+
+    function wrappedDraw(){
+        origDraw();
+        paint();
+    }
+
+    /* 用包装后的 draw 顶替全局 draw：翻开、插旗、重开局、切难度都会自动重画作弊层 */
+    draw = wrappedDraw;
+
+    var API = {
+        on: function(){
+            enabled = true;
+            draw();
+            log('[扫雷·作弊] 已开启，所有雷显示为粉底红字 B。关闭：MSDBG.off()');
+            return 'cheat ON';
+        },
+        off: function(){
+            enabled = false;
+            draw();
+            log('[扫雷·作弊] 已关闭。');
+            return 'cheat OFF';
+        },
+        toggle: function(){
+            if(enabled){ return API.off(); }
+            return API.on();
+        },
+        state: function(){
+            var s = enabled ? '开启' : '关闭';
+            log('[扫雷·作弊] 当前状态：' + s + '　难度：' + ROWS + '×' + COLS + ' / ' + MINES + ' 雷（第一次点击后才有雷）');
+            return enabled;
+        },
+        list: function(){
+            if(first){ log('[扫雷·作弊] 雷还没布，先点一格。'); return []; }
+            var out = [];
+            for(var r=0; r<ROWS; r++){
+                for(var c=0; c<COLS; c++){
+                    if(board[r][c] === 9){
+                        out.push('(' + (r+1) + ',' + (c+1) + ')');
+                    }
+                }
+            }
+            log('[扫雷·作弊] 共 ' + out.length + ' 颗雷：' + out.join(' '));
+            return out;
+        },
+        flag: function(){
+            if(first){ log('[扫雷·作弊] 雷还没布，先点一格再执行。'); return 0; }
+            var n = 0;
+            for(var r=0; r<ROWS; r++){
+                for(var c=0; c<COLS; c++){
+                    if(board[r][c] === 9 && !flag[r][c]){
+                        flag[r][c] = true;
+                        n = n + 1;
+                    }
+                }
+            }
+            draw();
+            log('[扫雷·作弊] 已给 ' + n + ' 颗雷插旗，剩余雷数归零，剩下的格子随便点。');
+            return n;
+        },
+        level: function(rows, cols, mines){
+            if(typeof rows !== 'number' || typeof cols !== 'number' || typeof mines !== 'number'){
+                log('[扫雷·作弊] 用法：MSDBG.level(16, 30, 99)');
+                return 'need numbers';
+            }
+            if(rows < 5 || rows > 30 || cols < 5 || cols > 40 || mines < 1 || mines > rows*cols - 10){
+                log('[扫雷·作弊] 参数超范围：行 5-30，列 5-40，雷数 1 到 行列数-10。');
+                return 'out of range';
+            }
+            setLevel(rows, cols, mines);
+            log('[扫雷·作弊] 已切到 ' + ROWS + '×' + COLS + ' / ' + MINES + ' 雷。');
+            return ROWS + 'x' + COLS + '/' + MINES;
+        },
+        help: function(){
+            log('[扫雷·作弊] MSDBG.on() 显示所有雷 | off() 关闭 | toggle() 开关 | state() 状态 | list() 雷坐标 | flag() 自动插旗 | level(行,列,雷) 切难度');
+            return 'help';
+        }
+    };
+
+    /* 挂到 window：控制台里可直接敲 MSDBG.on() */
+    window.MSDBG = API;
+
+    /* 偷懒入口：控制台里直接 __cheat = "on" / "off" 也能触发（IE9+ 支持，失败则忽略） */
+    try{
+        Object.defineProperty(window, '__cheat', {
+            configurable: true,
+            enumerable: false,
+            get: function(){ return enabled ? 'on' : 'off'; },
+            set: function(v){
+                if(v === 'on' || v === 'cheatmode' || v === true || v === 1){
+                    API.on();
+                }else if(v === 'off' || v === false || v === 0){
+                    API.off();
+                }
+            }
+        });
+    }catch(e){ /* 老浏览器不支持就算了，MSDBG 命令照样能用 */ }
+
+    log('[扫雷] 控制台后门已就绪：MSDBG.on() 显示所有炸弹，MSDBG.help() 查看全部命令。');
+})();
+
 </script>
 
 </body>

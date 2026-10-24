@@ -3,17 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>中国象棋</title>
 <style>
-canvas{border:1px solid #000000;}
-button{font-size:18px;padding:8px 16px;}
+canvas{border:3px solid #000000;}
+button{font-size:14px;}
 .tips{background:#f6f6f6;border:1px solid #cccccc;padding:10px 14px;margin:12px 0;max-width:640px;}
-.tips h3{font-size:16px;color:#2255aa;margin:12px 0 6px 0;border-bottom:1px solid #dddddd;padding-bottom:3px;}
+.tips h3{font-size:16px;color:#008000;margin:12px 0 6px 0;border-bottom:1px solid #dddddd;padding-bottom:3px;}
 .tips ul{margin:0 0 8px 0;padding-left:24px;}
 .tips li{margin:4px;line-height:20px;}
 .tips p{margin:6px 0;line-height:20px;}
-canvas{max-width:100%;height:auto;display:block;}
 </style>
 </head>
 <body>
@@ -64,13 +62,29 @@ canvas{max-width:100%;height:auto;display:block;}
 <li><b>别送子</b>：把棋子走到对方兵/马的攻击范围里，等于白送，走之前扫一眼对方所有子的走法。</li>
 <li><b>中路突破</b>：中路（第 5 列）是双方争夺的咽喉，用炮镇中路往往能压制对方。</li>
 </ul>
+<h3>七、模式与难度</h3>
+<ul>
+<li>棋盘上方的下拉菜单用来切换玩法：<b>人机对战（简单 / 普通 / 困难）</b>和<b>本地双人对战</b>。</li>
+<li><b>本地双人对战</b>：两个人用同一个鼠标轮流下，红方先走，切换模式会自动重新开局。</li>
+<li><b>简单</b>：电脑主要靠吃子，不太会防守；<b>普通</b>：会算一步得失；<b>困难</b>：会多想一步，还会主动找机会吃子。</li>
+</ul>
 </div>
+<p>
+模式：
+<select id="modeSel" onchange="changeMode()" style="padding:12px 28px;font-size:16px;">
+<option value="e1">人机对战（简单）</option>
+<option value="e2" selected>人机对战（普通）</option>
+<option value="e3">人机对战（困难）</option>
+<option value="p2">本地双人对战</option>
+</select>
+</p>
+
 <p id="msg">你是红方（下方），先走。先点自己的棋子选中，再点目标格。吃掉对方的"将"就赢。</p>
 
 <canvas id="cv" width="460" height="510"></canvas>
 <br><br>
-<button onclick="restart()">重新开始</button>
-<button onclick="location.href='index.html'">返回列表</button>
+<button onclick="restart()" style="padding:12px 28px;font-size:16px;">重新开始</button>
+<button onclick="location.href='index.html'" style="padding:12px 28px;font-size:16px;">返回列表</button>
 
 <script>
 
@@ -84,6 +98,20 @@ var board;
 var sel;
 var over;
 var thinking;
+var turn;
+var MODE = 'e2';   // e1/e2/e3 人机(简单/普通/困难)，p2 本地双人
+var LEVEL = 2;
+
+function changeMode(){
+    var s = document.getElementById('modeSel');
+    MODE = s.options[s.selectedIndex].value;
+    if(MODE === 'p2'){
+        LEVEL = 0;
+    }else{
+        LEVEL = parseInt(MODE.substring(1), 10);
+    }
+    restart();
+}
 
 var NAME_RED = {'K':'帅','A':'仕','B':'相','N':'马','R':'车','C':'炮','P':'兵'};
 var NAME_BLACK = {'K':'将','A':'士','B':'象','N':'马','R':'车','C':'炮','P':'卒'};
@@ -119,7 +147,12 @@ function restart(){
     sel = null;
     over = false;
     thinking = false;
-    document.getElementById('msg').innerHTML = '你是红方（下方），先走。先点自己的棋子选中，再点目标格。';
+    turn = RED;
+    if(MODE === 'p2'){
+        document.getElementById('msg').innerHTML = '本地双人：红方先走，两个人轮流选棋子和目标格。';
+    }else{
+        document.getElementById('msg').innerHTML = '你是红方（下方），先走。先点自己的棋子选中，再点目标格。';
+    }
     draw();
 }
 
@@ -374,35 +407,30 @@ function draw(){
     }
 }
 
-
-// 把鼠标位置换算成画布内部坐标（canvas 被 CSS 缩放时也不会点偏）
-function getPos(e){
-    var rect = cv.getBoundingClientRect();
-    var w = rect.width || cv.width;
-    var h = rect.height || cv.height;
-    var sx = cv.width / w;
-    var sy = cv.height / h;
-    var x, y;
-    if(e.clientX !== undefined && e.clientX !== null){
-        x = (e.clientX - rect.left) * sx;
-        y = (e.clientY - rect.top) * sy;
-    }else{
-        x = e.offsetX * sx;
-        y = e.offsetY * sy;
-    }
-    return {x:x, y:y};
-}
-
 cv.onclick = function(e){
     e = e || window.event;
     var x, y;
-    var pos = getPos(e);
-    x = pos.x;
-    y = pos.y;
+    if(e.offsetX !== undefined){
+        x = e.offsetX;
+        y = e.offsetY;
+    }else{
+        var rect = cv.getBoundingClientRect();
+        x = e.clientX - rect.left;
+        y = e.clientY - rect.top;
+    }
     var c = Math.round((x - PAD)/GS);
     var r = Math.round((y - PAD)/GS);
     clickAt(r, c);
 };
+
+function sideName(who){
+    if(who === RED){
+        if(MODE === 'p2'){ return '红方'; }
+        return '你';
+    }
+    if(MODE === 'p2'){ return '黑方'; }
+    return '电脑';
+}
 
 function clickAt(r, c){
     if(over || thinking){
@@ -413,12 +441,26 @@ function clickAt(r, c){
     }
     var p = board[r][c];
     if(sel && canMove(sel.r, sel.c, r, c)){
+        var who = board[sel.r][sel.c].side;
         var eaten = board[r][c];
         doMove(sel.r, sel.c, r, c);
         sel = null;
         draw();
         if(eaten && eaten.type === 'K'){
-            endGame('红方吃掉黑将，你赢了！');
+            if(who === RED){
+                endGame('红方吃掉黑将，' + sideName(RED) + '赢了！');
+            }else{
+                endGame('黑方吃掉红帅，' + sideName(BLACK) + '赢了！');
+            }
+            return;
+        }
+        if(MODE === 'p2'){
+            turn = (who === RED) ? BLACK : RED;
+            if(allMoves(turn).length === 0){
+                endGame(sideName(turn) + '无棋可走，' + sideName(who) + '赢了！');
+                return;
+            }
+            document.getElementById('msg').innerHTML = '轮到' + sideName(turn) + '走（本地双人）。';
             return;
         }
         thinking = true;
@@ -426,7 +468,7 @@ function clickAt(r, c){
         setTimeout(aiMove, 150);
         return;
     }
-    if(p && p.side === RED){
+    if(p && p.side === turn){
         sel = {r:r, c:c};
         draw();
     }
@@ -487,15 +529,17 @@ function findPosRow(p){
 function aiMove(){
     var moves = allMoves(BLACK);
     if(moves.length === 0){
-        endGame('黑方无棋可走，你赢了！');
+        endGame('黑方无棋可走，' + sideName(RED) + '赢了！');
         return;
     }
     var best = -99999;
     var bestList = new Array();
-    var i, m, victim, score, mover;
+    var i, j, m, victim, score, mover, limit, loss, gain;
+    var list = new Array();
+
+    // 先给每个走法打个底分：能吃到什么 + 往红方阵地压上
     for(i=0; i<moves.length; i++){
         m = moves[i];
-        mover = board[m.fr][m.fc];
         victim = board[m.tr][m.tc];
         score = 0;
         if(victim){
@@ -504,34 +548,76 @@ function aiMove(){
                 score = score + 100000;
             }
         }
-        // 走这一步之后，自己的子会不会被吃
-        var saved = board[m.tr][m.tc];
-        board[m.tr][m.tc] = mover;
-        board[m.fr][m.fc] = null;
-        var danger = false;
-        var rm = allMoves(RED);
-        for(var j=0; j<rm.length; j++){
-            if(rm[j].tr === m.tr && rm[j].tc === m.tc){
-                danger = true;
-                break;
+        score = score + m.tr * 0.3;
+        list.push({m:m, s0:score});
+    }
+
+    if(LEVEL === 1){
+        // 简单：只顾着吃，不管危险，随机性很大
+        for(i=0; i<list.length; i++){
+            var s1 = list[i].s0 * 0.3 + Math.random() * 20;
+            if(s1 > best){
+                best = s1;
+                bestList = new Array();
+                bestList.push(list[i].m);
+            }else if(s1 === best){
+                bestList.push(list[i].m);
             }
         }
-        board[m.fr][m.fc] = mover;
-        board[m.tr][m.tc] = saved;
-        if(danger){
-            score = score - pieceValue(mover) * 8;
+    }else{
+        // 普通 / 困难：按底分排序，只看前面一部分（省时间），再算对手的回应
+        list.sort(function(a, b){
+            return b.s0 - a.s0;
+        });
+        limit = list.length;
+        if(LEVEL === 3 && limit > 16){
+            limit = 16;
         }
-        // 往红方阵地压上
-        score = score + m.tr * 0.3;
-        score = score + Math.random() * 2;
-        if(score > best){
-            best = score;
-            bestList = new Array();
-            bestList.push(m);
-        }else if(score === best){
-            bestList.push(m);
+        if(LEVEL === 2 && limit > 30){
+            limit = 30;
+        }
+        var w = (LEVEL === 3) ? 12 : 8;
+        for(i=0; i<limit; i++){
+            m = list[i].m;
+            mover = board[m.fr][m.fc];
+            score = list[i].s0;
+            var saved = board[m.tr][m.tc];
+            board[m.tr][m.tc] = mover;
+            board[m.fr][m.fc] = null;
+            // 红方下一手能吃到什么（重点看刚走的这个子）
+            var rm = allMoves(RED);
+            loss = 0;
+            for(j=0; j<rm.length; j++){
+                if(rm[j].tr === m.tr && rm[j].tc === m.tc){
+                    loss = pieceValue(mover);
+                    break;
+                }
+            }
+            gain = 0;
+            if(LEVEL === 3){
+                // 困难：再看看自己下一手能吃到红方什么
+                var bm = allMoves(BLACK);
+                for(j=0; j<bm.length; j++){
+                    var v3 = board[bm[j].tr][bm[j].tc];
+                    if(v3 && pieceValue(v3) > gain){
+                        gain = pieceValue(v3);
+                    }
+                }
+            }
+            board[m.fr][m.fc] = mover;
+            board[m.tr][m.tc] = saved;
+            score = score - loss * w + gain * 6;
+            score = score + Math.random() * 2;
+            if(score > best){
+                best = score;
+                bestList = new Array();
+                bestList.push(m);
+            }else if(score === best){
+                bestList.push(m);
+            }
         }
     }
+
     m = bestList[Math.floor(Math.random() * bestList.length)];
     var eaten = board[m.tr][m.tc];
     doMove(m.fr, m.fc, m.tr, m.tc);
